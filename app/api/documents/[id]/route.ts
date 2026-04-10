@@ -5,6 +5,7 @@ import { z } from "zod"
 import { auth } from "@/lib/auth/auth"
 import { db } from "@/lib/db/db"
 import { documents } from "@/lib/db/schema"
+import { getDocumentJobStatus } from "@/lib/qstash/document-jobs"
 
 export const runtime = "nodejs"
 
@@ -44,7 +45,9 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
-  return NextResponse.json({ data: row })
+  const job = await getDocumentJobStatus(session.user.id, id)
+
+  return NextResponse.json({ data: { ...row, job } })
 }
 
 export async function PATCH(

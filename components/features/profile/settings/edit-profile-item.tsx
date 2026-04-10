@@ -204,11 +204,17 @@ export default function EditProfileItem({ session }: { session: any }) {
                     <UserRound className="size-4" />
                     Basics
                   </TabsTrigger>
-                  <TabsTrigger value="trust" className="gap-2">
+                  <TabsTrigger
+                    value="trust"
+                    className="flex-none gap-2 px-2 text-xs sm:text-sm"
+                  >
                     <Handshake className="size-4" />
                     Trusted helper
                   </TabsTrigger>
-                  <TabsTrigger value="location" className="gap-2">
+                  <TabsTrigger
+                    value="location"
+                    className="flex-none gap-2 px-2 text-xs sm:text-sm"
+                  >
                     <MapPin className="size-4" />
                     Location
                   </TabsTrigger>

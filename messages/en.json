@@ -38,6 +38,7 @@
     "farmerProfile": "Farmer profile",
     "landRecords": "Land record lookup",
     "documentVault": "Document vault",
+    "documentAnalyzer": "Document analyzer",
     "signedIn": "Signed in"
   },
   "Profile": {
