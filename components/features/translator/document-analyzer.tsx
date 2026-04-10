@@ -59,6 +59,8 @@ const LANGUAGES = [
   { code: "pa-IN", name: "ਪੰਜਾਬੀ (Punjabi)" },
 ] as const
 
+const NO_STATE_VALUE = "__no_state" as const
+
 function mapLanguageToChatLocale(language: string) {
   if (language.startsWith("mr")) return "mr"
   if (language.startsWith("en")) return "en"
@@ -561,12 +563,19 @@ export function DocumentAnalyzer() {
 
           <section className="rounded-xl border bg-background p-3 sm:p-4">
             <div className="mb-3 text-sm font-semibold">State (optional)</div>
-            <Select value={stateCode} onValueChange={setStateCode}>
+            <Select
+              value={stateCode || NO_STATE_VALUE}
+              onValueChange={(value) =>
+                setStateCode(value === NO_STATE_VALUE ? "" : value)
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select your state" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No state selected</SelectItem>
+                <SelectItem value={NO_STATE_VALUE}>
+                  No state selected
+                </SelectItem>
                 <SelectItem value="__states" disabled>
                   States
                 </SelectItem>
@@ -819,22 +828,69 @@ export function DocumentAnalyzer() {
                         checklist.
                       </div>
 
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {summary.classes.length ? (
-                          summary.classes.map((c) => (
-                            <span
-                              key={c.id}
-                              className="rounded-full border bg-background px-2.5 py-1 text-xs font-semibold"
-                              title={`Score: ${c.score}`}
-                            >
-                              {c.label}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            No clear class detected yet.
-                          </span>
-                        )}
+                      <div className="mt-3">
+                        {/* Mobile: category chips (scrollable) */}
+                        <div className="sm:hidden">
+                          <ScrollArea className="w-full">
+                            <div className="flex w-max gap-2 pr-2">
+                              {summary.classes.map((c) => (
+                                <span
+                                  key={c.id}
+                                  className={cn(
+                                    "shrink-0 rounded-full border bg-background px-2.5 py-1 text-xs font-semibold",
+                                    c.score === 0 && "opacity-50"
+                                  )}
+                                  title={`Score: ${c.score}`}
+                                >
+                                  {c.label}
+                                  {c.score > 0 ? (
+                                    <span className="ml-2 rounded-full border bg-muted/30 px-1.5 py-0.5 text-[10px]">
+                                      {c.score}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        </div>
+
+                        {/* Desktop: ranked list with bars */}
+                        <div className="hidden sm:block">
+                          <div className="grid gap-2">
+                            {(() => {
+                              const max = Math.max(
+                                1,
+                                ...summary.classes.map((c) => c.score)
+                              )
+                              return summary.classes.map((c) => (
+                                <div
+                                  key={c.id}
+                                  className={cn(
+                                    "rounded-lg border bg-background px-3 py-2",
+                                    c.score === 0 && "opacity-60"
+                                  )}
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="text-xs font-semibold">
+                                      {c.label}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {c.score}
+                                    </div>
+                                  </div>
+                                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                                    <div
+                                      className="h-full bg-emerald-500/70"
+                                      style={{
+                                        width: `${Math.round((c.score / max) * 100)}%`,
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              ))
+                            })()}
+                          </div>
+                        </div>
                       </div>
 
                       {selectedSubdivision && (

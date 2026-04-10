@@ -334,10 +334,7 @@ export function summarizeDocument(
       0
     )
     return { id: c.id, label: c.label, score }
-  })
-    .filter((c) => c.score > 0)
-    .toSorted((a, b) => b.score - a.score)
-    .slice(0, 4)
+  }).toSorted((a, b) => b.score - a.score)
 
   const findings: Finding[] = []
 

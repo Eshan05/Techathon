@@ -5,6 +5,7 @@ import { z } from "zod"
 import { auth } from "@/lib/auth/auth"
 import { db } from "@/lib/db/db"
 import { documents } from "@/lib/db/schema"
+import { getDocumentJobStatuses } from "@/lib/qstash/document-jobs"
 
 export const runtime = "nodejs"
 
@@ -36,7 +37,17 @@ export async function GET(request: Request) {
     orderBy: (t, { desc }) => [desc(t.createdAt)],
   })
 
-  return NextResponse.json({ data: rows })
+  const jobMap = await getDocumentJobStatuses(
+    session.user.id,
+    rows.map((r) => r.id)
+  )
+
+  const withJobs = rows.map((r) => ({
+    ...r,
+    job: jobMap[r.id] ?? null,
+  }))
+
+  return NextResponse.json({ data: withJobs })
 }
 
 export async function POST(request: Request) {

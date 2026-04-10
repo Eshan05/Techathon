@@ -89,9 +89,11 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton disabled>
-                  <FileText />
-                  <span>{tSidebar("documentVault")}</span>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/vault">
+                    <FileText />
+                    <span>{tSidebar("documentVault")}</span>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
