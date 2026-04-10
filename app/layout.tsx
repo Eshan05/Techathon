@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ChatAssistant } from "@/components/features/chat/chat-assistant";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           {children}
+          <ChatAssistant profileId={process.env.AI_CHAT_DEFAULT_PROFILE ?? "kisan-vakil"} />
           <Toaster />
         </ThemeProvider>
       </body>

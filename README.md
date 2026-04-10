@@ -10,7 +10,7 @@ Next.js (App Router) + shadcn/ui + Better Auth (v1.6).
 pnpm install
 ```
 
-2) Create `.env.local`
+2) Create `.env.local` (you can copy from `.env.example`)
 
 ```bash
 # Required (32+ chars)
@@ -22,6 +22,14 @@ BETTER_AUTH_URL="http://localhost:3000"
 # Optional (defaults to a local file DB)
 TURSO_DATABASE_URL="file:./.data/auth.db"
 # TURSO_AUTH_TOKEN="..." # only for remote Turso/libsql
+
+# AI (Groq via AI SDK)
+GROQ_API_KEY="..."
+AI_CHAT_DEFAULT_PROFILE="kisan-vakil" # or "default"
+
+# Optional: Upstash Redis (for caching)
+UPSTASH_REDIS_REST_URL="..."
+UPSTASH_REDIS_REST_TOKEN="..."
 ```
 
 3) Initialize the DB schema

@@ -1,3 +1,5 @@
+# IMPORTANT. ALWAYS READ, DON'T SKIP
+
 “Kisan Vakil” sounds like a farmer’s legal and advisory ally, so the app should feel like a sharp pocket advocate for land, schemes, disputes, and paperwork. Mostly, farmers face an issue whereby they are made to signup paperwork they don't know about so we want to combat that
 
 Core features:
@@ -80,6 +82,8 @@ We are using:
 18. React PDF for PDF viewing and annotation
 19. React email and components / renderer for building email templates using Tailwind
 20. Use Gemini 2.5 Flash (Google API and free) or Whisper Large v3 (Groq API) (https://console.groq.com/docs/rate-limits)
+21. For local development in AI specifically use AI SDK Ollama
+22. We are also using QStash
 
 ABSOLUTELY NON-NEGOTIABLE:
 1. Brilliant, non-generic designs
@@ -88,3 +92,4 @@ ABSOLUTELY NON-NEGOTIABLE:
 4. ALWAYS search the web for the LATEST stuff. No excuses. You can fetch, search, crawl and so on
 5. Make heavy use of flyout or such components, don't just link to pages. The app should feel like a single page experience, with modals, flyouts, and such. Use drawers, dialogs, grouped input, accordions and so on where you can.
 6. Everything must be free and not require a credit card
+7. Always do `pnpm i` before `pnpm dev`. After any changes are done always make sure to do `lint:ts` and `format`.
