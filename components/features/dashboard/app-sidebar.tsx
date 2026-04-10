@@ -98,6 +98,14 @@ export function AppSidebar() {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
+                  <Link href="/dashboard/document-guidelines">
+                    <BookOpenText />
+                    <span>{tSidebar("documentGuidelines")}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
                   <Link href="/dashboard/vault">
                     <FileText />
                     <span>{tSidebar("documentVault")}</span>
