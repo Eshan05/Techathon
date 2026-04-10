@@ -1,7 +1,7 @@
-import { relations, sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { relations, sql } from "drizzle-orm"
+import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { users } from "@/lib/db/auth.schema";
+import { users } from "@/lib/db/auth.schema"
 
 export const farmerProfiles = sqliteTable(
   "farmer_profiles",
@@ -28,7 +28,7 @@ export const farmerProfiles = sqliteTable(
       .notNull(),
   },
   (table) => [index("farmer_profiles_userId_idx").on(table.userId)]
-);
+)
 
 export const landParcels = sqliteTable(
   "land_parcels",
@@ -64,7 +64,7 @@ export const landParcels = sqliteTable(
       .notNull(),
   },
   (table) => [index("land_parcels_userId_idx").on(table.userId)]
-);
+)
 
 export const documents = sqliteTable(
   "documents",
@@ -99,14 +99,14 @@ export const documents = sqliteTable(
     index("documents_userId_idx").on(table.userId),
     index("documents_landParcelId_idx").on(table.landParcelId),
   ]
-);
+)
 
 export const farmerProfilesRelations = relations(farmerProfiles, ({ one }) => ({
   user: one(users, {
     fields: [farmerProfiles.userId],
     references: [users.id],
   }),
-}));
+}))
 
 export const landParcelsRelations = relations(landParcels, ({ one, many }) => ({
   user: one(users, {
@@ -114,7 +114,7 @@ export const landParcelsRelations = relations(landParcels, ({ one, many }) => ({
     references: [users.id],
   }),
   documents: many(documents),
-}));
+}))
 
 export const documentsRelations = relations(documents, ({ one }) => ({
   user: one(users, {
@@ -125,4 +125,4 @@ export const documentsRelations = relations(documents, ({ one }) => ({
     fields: [documents.landParcelId],
     references: [landParcels.id],
   }),
-}));
+}))

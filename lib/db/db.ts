@@ -1,11 +1,11 @@
-import { drizzle } from "drizzle-orm/libsql";
-import fs from "node:fs";
+import { drizzle } from "drizzle-orm/libsql"
+import fs from "node:fs"
 
-import * as schema from "@/lib/db/schema";
-import { tursoAuthToken, tursoDatabaseUrl } from "@/utils/constants";
+import * as schema from "@/lib/db/schema"
+import { tursoAuthToken, tursoDatabaseUrl } from "@/utils/constants"
 
 if (tursoDatabaseUrl.startsWith("file:")) {
-  fs.mkdirSync(".data", { recursive: true });
+  fs.mkdirSync(".data", { recursive: true })
 }
 
 export const db = drizzle({
@@ -14,4 +14,4 @@ export const db = drizzle({
     authToken: tursoAuthToken,
   },
   schema,
-});
+})
