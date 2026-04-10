@@ -104,6 +104,59 @@ export const documents = sqliteTable(
   ]
 )
 
+export const onboarding = sqliteTable(
+  "onboarding",
+  {
+    id: text("id").primaryKey(),
+
+    userId: text("user_id")
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    // Step 1: Identity
+    identityDocumentType: text("identity_document_type"), // "aadhaar" | "pan" | "driving_license" | "voter_id"
+    identityDocUrl: text("identity_doc_url"),
+    identityUploadthingKey: text("identity_uploadthing_key"),
+    identityStatus: text("identity_status").default("pending"), // "pending" | "verified" | "rejected"
+    identityVerifiedAt: integer("identity_verified_at", {
+      mode: "timestamp_ms",
+    }),
+
+    // Step 2: Land Record
+    landDocUrl: text("land_doc_url"),
+    landUploadthingKey: text("land_uploadthing_key"),
+    landStatus: text("land_status").default("pending"), // "pending" | "verified" | "rejected"
+    landVerifiedAt: integer("land_verified_at", { mode: "timestamp_ms" }),
+
+    // Step 3: Face Scan
+    faceData: text("face_data"), // JSON string with frame data
+    faceStatus: text("face_status").default("pending"), // "pending" | "verified" | "rejected"
+    faceVerifiedAt: integer("face_verified_at", { mode: "timestamp_ms" }),
+
+    // Overall Status
+    currentStep: integer("current_step").default(1).notNull(), // 1-4
+    overallStatus: text("overall_status").default("in_progress"), // "in_progress" | "completed"
+
+    // Verification Summary
+    verifiedByName: text("verified_by_name"),
+    verifiedByRole: text("verified_by_role"),
+    verificationCompletedAt: integer("verification_completed_at", {
+      mode: "timestamp_ms",
+    }),
+
+    // Metadata
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [index("onboarding_userId_idx").on(table.userId)]
+)
+
 export const farmerProfilesRelations = relations(farmerProfiles, ({ one }) => ({
   user: one(users, {
     fields: [farmerProfiles.userId],
@@ -127,5 +180,12 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   landParcel: one(landParcels, {
     fields: [documents.landParcelId],
     references: [landParcels.id],
+  }),
+}))
+
+export const onboardingRelations = relations(onboarding, ({ one }) => ({
+  user: one(users, {
+    fields: [onboarding.userId],
+    references: [users.id],
   }),
 }))

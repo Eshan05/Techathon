@@ -199,11 +199,8 @@ export default function EditProfileItem({ session }: { session: any }) {
           <Form {...form} aria-busy={isProfileLoading}>
             <form onSubmit={form.handleSubmit(onSave)} className="grid gap-4">
               <Tabs defaultValue="basics" className="flex w-full flex-col">
-                <TabsList className="w-full justify-start gap-1 overflow-x-auto bg-transparent p-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <TabsTrigger
-                    value="basics"
-                    className="flex-none gap-2 px-2 text-xs sm:text-sm"
-                  >
+                <TabsList className="flex w-full justify-start gap-1 bg-transparent">
+                  <TabsTrigger value="basics" className="gap-2">
                     <UserRound className="size-4" />
                     Basics
                   </TabsTrigger>

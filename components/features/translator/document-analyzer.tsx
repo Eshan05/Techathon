@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
   AlertTriangle,
   FileText,
@@ -37,6 +38,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import { TTSPlayer } from "@/components/features/translator/tts-player"
+import { uploadFiles } from "@/utils/uploadthing"
 import {
   getHighlightRangesForText,
   summarizeDocument,
@@ -137,12 +139,119 @@ function renderWithHighlights(text: string, ranges: HighlightRange[]) {
   return nodes
 }
 
+type TranslatorJobState =
+  | "queued"
+  | "extracting"
+  | "running"
+  | "done"
+  | "failed"
+
+type TranslatorJobStatus = {
+  state: TranslatorJobState
+  stage: "extracting" | "translating" | "analyzing" | "done"
+  totalChunks: number
+  translatedChunks: number
+  analyzedChunks: number
+  message?: string
+}
+
+type TranslatorChunk = {
+  index: number
+  pageNumber: number
+  partNumber: number
+  partCount: number
+  text: string
+}
+
+type TranslatorInsightChunk = { index: number; markdown: string }
+
+type TranslatorJobPollResponse = {
+  data: {
+    status: TranslatorJobStatus
+    chunks: TranslatorChunk[]
+    insights: TranslatorInsightChunk[]
+    nextAfter: number
+  }
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
+function isRetryableUploadError(err: unknown) {
+  const message = err instanceof Error ? err.message : String(err)
+  return /network|timeout|fetch|socket|econnreset|etimedout|503|504/i.test(
+    message
+  )
+}
+
+function mergeChunks(prev: TranslatorChunk[], incoming: TranslatorChunk[]) {
+  const map = new Map<number, TranslatorChunk>()
+  prev.forEach((c) => map.set(c.index, c))
+  incoming.forEach((c) => map.set(c.index, c))
+  return Array.from(map.values()).sort((a, b) => a.index - b.index)
+}
+
+function mergeInsights(
+  prev: TranslatorInsightChunk[],
+  incoming: TranslatorInsightChunk[]
+) {
+  const map = new Map<number, TranslatorInsightChunk>()
+  prev.forEach((c) => map.set(c.index, c))
+  incoming.forEach((c) => map.set(c.index, c))
+  return Array.from(map.values()).sort((a, b) => a.index - b.index)
+}
+
+function buildCombinedTranslation(chunks: TranslatorChunk[]) {
+  return chunks
+    .slice()
+    .sort((a, b) => a.index - b.index)
+    .map((c) => c.text)
+    .join("\n\n")
+    .trim()
+}
+
+function buildCombinedInsights(opts: {
+  insights: TranslatorInsightChunk[]
+  chunks: TranslatorChunk[]
+}) {
+  const chunkByIndex = new Map(opts.chunks.map((c) => [c.index, c] as const))
+
+  return opts.insights
+    .slice()
+    .sort((a, b) => a.index - b.index)
+    .map((ins) => {
+      const meta = chunkByIndex.get(ins.index)
+      const title = meta
+        ? `### Page ${meta.pageNumber} (${meta.partNumber}/${meta.partCount})`
+        : `### Part ${ins.index + 1}`
+      return [title, ins.markdown.trim()].filter(Boolean).join("\n\n")
+    })
+    .join("\n\n---\n\n")
+    .trim()
+}
+
 export function DocumentAnalyzer() {
   const [file, setFile] = React.useState<File | null>(null)
   const [language, setLanguage] = React.useState<string>("hi-IN")
   const [stateCode, setStateCode] = React.useState<string>("")
 
   const [isTranslating, setIsTranslating] = React.useState(false)
+
+  const [translatorJobId, setTranslatorJobId] = React.useState<string | null>(
+    null
+  )
+  const [translatorAfter, setTranslatorAfter] = React.useState<number>(-1)
+  const [translatorStatus, setTranslatorStatus] =
+    React.useState<TranslatorJobStatus | null>(null)
+  const [translatorChunks, setTranslatorChunks] = React.useState<
+    TranslatorChunk[]
+  >([])
+  const [translatorInsightChunks, setTranslatorInsightChunks] = React.useState<
+    TranslatorInsightChunk[]
+  >([])
+  const lastTranslatorStateRef = React.useRef<TranslatorJobState | null>(null)
+
   const [translatedText, setTranslatedText] = React.useState<string | null>(
     null
   )
@@ -162,6 +271,94 @@ export function DocumentAnalyzer() {
   const [insights, setInsights] = React.useState<string>("")
 
   const translationContainerRef = React.useRef<HTMLDivElement>(null)
+
+  const translatorJobQuery = useQuery({
+    queryKey: ["translator-job", translatorJobId],
+    enabled: !!translatorJobId,
+    queryFn: async () => {
+      const id = translatorJobId
+      if (!id) throw new Error("Missing job id")
+
+      const res = await fetch(
+        `/api/translator-jobs/${id}?after=${translatorAfter}&limit=10`,
+        {
+          method: "GET",
+        }
+      )
+
+      const json = (await res.json().catch(() => null)) as
+        | TranslatorJobPollResponse
+        | { error?: string }
+        | null
+
+      if (!res.ok || !json || "error" in json) {
+        throw new Error((json as any)?.error || "Could not fetch job status")
+      }
+
+      return json as TranslatorJobPollResponse
+    },
+    refetchInterval: (q) => {
+      const state = (q.state.data as any)?.data?.status?.state as
+        | TranslatorJobState
+        | undefined
+
+      if (!state) return 1200
+      return state === "done" || state === "failed" ? false : 1200
+    },
+    retry: false,
+  })
+
+  React.useEffect(() => {
+    const payload = translatorJobQuery.data?.data
+    if (!payload) return
+
+    setTranslatorStatus(payload.status)
+    setTranslatorAfter((prev) => Math.max(prev, payload.nextAfter ?? prev))
+
+    if (payload.chunks?.length) {
+      setTranslatorChunks((prev) => mergeChunks(prev, payload.chunks))
+    }
+
+    if (payload.insights?.length) {
+      setTranslatorInsightChunks((prev) =>
+        mergeInsights(prev, payload.insights)
+      )
+    }
+  }, [translatorJobQuery.data])
+
+  React.useEffect(() => {
+    if (!translatorChunks.length) return
+
+    const combined = buildCombinedTranslation(translatorChunks)
+    setTranslatedText(combined || null)
+  }, [translatorChunks])
+
+  React.useEffect(() => {
+    if (!translatorInsightChunks.length) return
+
+    const combined = buildCombinedInsights({
+      insights: translatorInsightChunks,
+      chunks: translatorChunks,
+    })
+
+    setInsights(combined)
+  }, [translatorInsightChunks, translatorChunks])
+
+  React.useEffect(() => {
+    const state = translatorStatus?.state
+    if (!state) return
+
+    if (lastTranslatorStateRef.current === state) return
+    lastTranslatorStateRef.current = state
+
+    if (state === "done") {
+      toast.success("Translation ready.")
+    }
+
+    if (state === "failed") {
+      toast.error(translatorStatus?.message || "Translation failed")
+    }
+  }, [translatorStatus?.state, translatorStatus?.message])
 
   const selectedSubdivision = React.useMemo(
     () => getIndianSubdivision(stateCode),
@@ -192,6 +389,14 @@ export function DocumentAnalyzer() {
   const resetAll = React.useCallback(() => {
     setFile(null)
     setIsTranslating(false)
+
+    setTranslatorJobId(null)
+    setTranslatorAfter(-1)
+    setTranslatorStatus(null)
+    setTranslatorChunks([])
+    setTranslatorInsightChunks([])
+    lastTranslatorStateRef.current = null
+
     setTranslatedText(null)
     setSelectionText("")
     setAskDrawerOpen(false)
@@ -207,6 +412,14 @@ export function DocumentAnalyzer() {
   const handleDrop = React.useCallback((accepted: File[]) => {
     const next = accepted?.[0] ?? null
     setFile(next)
+
+    setTranslatorJobId(null)
+    setTranslatorAfter(-1)
+    setTranslatorStatus(null)
+    setTranslatorChunks([])
+    setTranslatorInsightChunks([])
+    lastTranslatorStateRef.current = null
+
     setTranslatedText(null)
     setSelectionText("")
     setAskAnswer("")
@@ -254,37 +467,86 @@ export function DocumentAnalyzer() {
       return
     }
 
+    const toastId = toast.loading("Uploading…")
+
     try {
       setIsTranslating(true)
 
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("language", language)
+      setTranslatorJobId(null)
+      setTranslatorAfter(-1)
+      setTranslatorStatus(null)
+      setTranslatorChunks([])
+      setTranslatorInsightChunks([])
+      lastTranslatorStateRef.current = null
 
-      const response = await fetch("/api/translate-document", {
-        method: "POST",
-        body: formData,
-      })
-
-      const data = await response.json().catch(() => null)
-      if (!response.ok || !data?.text) {
-        throw new Error(data?.error || "Translation failed")
-      }
-
-      setTranslatedText(data.text)
+      setTranslatedText(null)
       setSelectionText("")
       setAskAnswer("")
       setInsights("")
-      toast.success("Translation ready.")
+      setActiveTab("text")
+
+      const maxAttempts = 3
+      let uploadRes: unknown = null
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          uploadRes = await uploadFiles("analyzerDocument", {
+            files: [file],
+          })
+          break
+        } catch (e) {
+          if (attempt >= maxAttempts || !isRetryableUploadError(e)) throw e
+          toast.message(
+            `Network hiccup — retrying upload (${attempt + 1}/${maxAttempts})…`,
+            { id: toastId }
+          )
+          await sleep(600 * attempt)
+        }
+      }
+
+      const uploaded = (uploadRes as any)?.[0]?.serverData as
+        | { url?: string; type?: string }
+        | undefined
+
+      if (!uploaded?.url || !uploaded?.type) {
+        throw new Error("Upload failed: no file URL returned")
+      }
+
+      toast.message("Queuing translation…", { id: toastId })
+
+      const response = await fetch("/api/translator-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileUrl: uploaded.url,
+          mimeType: uploaded.type,
+          targetLanguage: language,
+          stateCode: stateCode || undefined,
+        }),
+      })
+
+      const data = (await response.json().catch(() => null)) as {
+        data?: { jobId?: string }
+        error?: string
+      } | null
+
+      if (!response.ok || !data?.data?.jobId) {
+        throw new Error(data?.error || "Could not queue translation")
+      }
+
+      setTranslatorJobId(data.data.jobId)
+      toast.success("Queued — processing safely in the background.", {
+        id: toastId,
+      })
     } catch (error) {
       console.error(error)
       const message =
         error instanceof Error ? error.message : "Failed to translate document."
-      toast.error(message)
+      toast.error(message, { id: toastId })
     } finally {
       setIsTranslating(false)
     }
-  }, [file, language])
+  }, [file, language, stateCode])
 
   const askOnText = React.useCallback(
     async (opts: {
@@ -402,7 +664,8 @@ export function DocumentAnalyzer() {
         : ""
 
       const instruction =
-        "You are Kisan Vakil. Analyze the translated document below. Output in plain language with these sections:\n" +
+        "You are Kisan Vakil. Synthesize a whole-document review.\n" +
+        "Use plain language with these sections:\n" +
         "1) What this paper is about (3 bullets)\n" +
         "2) Key clauses (max 8 bullets)\n" +
         "3) Red flags / risky terms (max 10 bullets)\n" +
@@ -412,11 +675,27 @@ export function DocumentAnalyzer() {
         "If you are unsure, say what information is missing." +
         stateContext
 
+      const chunkNotes = translatorInsightChunks.length
+        ? buildCombinedInsights({
+            insights: translatorInsightChunks,
+            chunks: translatorChunks,
+          })
+        : ""
+
+      const corpus = chunkNotes
+        ? chunkNotes
+        : [
+            "(Chunk-by-chunk notes are not available yet. Using an excerpt.)",
+            translatedText.slice(0, 5000),
+            "…",
+            translatedText.slice(-5000),
+          ].join("\n\n")
+
       const prompt = [
         instruction,
         "",
-        "Translated document:",
-        `\"\"\"${translatedText.slice(0, 12000)}\"\"\"`,
+        "Document notes:",
+        `\"\"\"${corpus.slice(0, 14000)}\"\"\"`,
       ].join("\n")
 
       const response = await fetch("/api/chats", {
@@ -456,7 +735,18 @@ export function DocumentAnalyzer() {
     } finally {
       setIsAnalyzing(false)
     }
-  }, [language, selectedSubdivision, translatedText])
+  }, [
+    language,
+    selectedSubdivision,
+    translatedText,
+    translatorChunks,
+    translatorInsightChunks,
+  ])
+
+  const isJobActive =
+    !!translatorStatus &&
+    translatorStatus.state !== "done" &&
+    translatorStatus.state !== "failed"
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -490,13 +780,19 @@ export function DocumentAnalyzer() {
           </Button>
           <Button
             onClick={handleTranslate}
-            disabled={!file || isTranslating}
+            disabled={!file || isTranslating || isJobActive}
             className="w-full gap-2 sm:w-auto"
           >
-            {isTranslating ? (
+            {isTranslating || isJobActive ? (
               <>
                 <Loader2 className="size-4 animate-spin" />
-                Translating…
+                {isTranslating
+                  ? "Starting…"
+                  : translatorStatus?.stage === "extracting"
+                    ? "Reading pages…"
+                    : translatorStatus?.stage === "analyzing"
+                      ? "Checking…"
+                      : "Translating…"}
               </>
             ) : (
               <>
@@ -506,6 +802,29 @@ export function DocumentAnalyzer() {
             )}
           </Button>
         </div>
+
+        {translatorStatus && (
+          <div className="w-full rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="font-semibold text-foreground/80">
+                {translatorStatus.stage}
+              </span>
+              <span>
+                {translatorStatus.translatedChunks}/
+                {Math.max(1, translatorStatus.totalChunks)} translated
+              </span>
+              <span>
+                {translatorStatus.analyzedChunks}/
+                {Math.max(1, translatorStatus.totalChunks)} checked
+              </span>
+            </div>
+            {translatorStatus.message ? (
+              <div className="mt-1 line-clamp-2">
+                {translatorStatus.message}
+              </div>
+            ) : null}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-12">
@@ -614,17 +933,17 @@ export function DocumentAnalyzer() {
                 variant="outline"
                 className="w-full gap-2 sm:w-auto"
                 onClick={analyzeFullDocument}
-                disabled={!translatedText || isAnalyzing}
+                disabled={!translatedText || isAnalyzing || isJobActive}
               >
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="size-4 animate-spin" />
-                    Analyzing…
+                    Synthesizing…
                   </>
                 ) : (
                   <>
                     <ShieldAlert className="size-4" />
-                    Analyze whole document
+                    Synthesize whole paper
                   </>
                 )}
               </Button>
@@ -689,9 +1008,24 @@ export function DocumentAnalyzer() {
               <TabsContent value="text" className="m-0 p-3 sm:p-4">
                 {!translatedText ? (
                   <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
-                    Upload a file and hit{" "}
-                    <span className="font-medium">Translate</span>. Then select
-                    a risky line to ask Kisan Vakil for an explanation.
+                    {isJobActive ? (
+                      <div className="space-y-1">
+                        <div className="font-medium text-foreground">
+                          Working in the background…
+                        </div>
+                        <div>
+                          {translatorStatus?.message ||
+                            "Reading and translating your document safely, chunk by chunk."}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        Upload a file and hit{" "}
+                        <span className="font-medium">Translate</span>. Then
+                        select a risky line to ask Kisan Vakil for an
+                        explanation.
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1069,9 +1403,17 @@ export function DocumentAnalyzer() {
                   </div>
                 ) : (
                   <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
-                    Run{" "}
-                    <span className="font-medium">Analyze whole document</span>{" "}
-                    to get red flags and next steps.
+                    {isJobActive ? (
+                      "Chunk-by-chunk checks will appear here as we process the document."
+                    ) : (
+                      <>
+                        Click{" "}
+                        <span className="font-medium">
+                          Synthesize whole paper
+                        </span>{" "}
+                        for a consolidated red-flag review.
+                      </>
+                    )}
                   </div>
                 )}
               </TabsContent>
