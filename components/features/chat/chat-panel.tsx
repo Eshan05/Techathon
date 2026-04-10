@@ -1,35 +1,37 @@
-"use client";
+"use client"
 
-import { useMemo, useState } from "react";
+import { useMemo, useState } from "react"
+import { DefaultChatTransport } from "ai"
+import { useChat } from "@ai-sdk/react"
+import { useLocale, useTranslations } from "next-intl"
 
-import { DefaultChatTransport } from "ai";
-import { useChat } from "@ai-sdk/react";
-
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
 
 export function ChatPanel({
   profileId = "kisan-vakil",
 }: {
-  profileId?: string;
+  profileId?: string
 }) {
+  const t = useTranslations("Chat")
+  const locale = useLocale()
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chats",
-        body: { profileId },
+        body: { profileId, locale },
       }),
-    [profileId]
-  );
+    [locale, profileId]
+  )
 
   const { messages, sendMessage, status, stop, error, setMessages } = useChat({
     transport,
-  });
+  })
 
-  const [input, setInput] = useState("");
-  const canSend = status === "ready" && input.trim().length > 0;
+  const [input, setInput] = useState("")
+  const canSend = status === "ready" && input.trim().length > 0
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -37,7 +39,7 @@ export function ChatPanel({
         <div className="py-3">
           {messages.length === 0 ? (
             <div className="rounded-xl border bg-muted/30 p-3 text-sm text-muted-foreground">
-              Ask about land records, schemes, a notice you received, or paste a clause you&apos;re unsure about.
+              {t("emptyState")}
             </div>
           ) : null}
 
@@ -62,7 +64,7 @@ export function ChatPanel({
 
           {error ? (
             <div className="mt-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
-              Something went wrong. Please try again.
+              {t("error")}
             </div>
           ) : null}
         </div>
@@ -72,16 +74,16 @@ export function ChatPanel({
         <form
           className="grid gap-2"
           onSubmit={(e) => {
-            e.preventDefault();
-            if (!canSend) return;
-            sendMessage({ text: input.trim() });
-            setInput("");
+            e.preventDefault()
+            if (!canSend) return
+            sendMessage({ text: input.trim() })
+            setInput("")
           }}
         >
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your question…"
+            placeholder={t("placeholder")}
             disabled={status !== "ready"}
             className="min-h-16"
           />
@@ -90,7 +92,7 @@ export function ChatPanel({
             <div className="flex items-center gap-2">
               {(status === "submitted" || status === "streaming") && (
                 <Button type="button" variant="outline" onClick={() => stop()}>
-                  Stop
+                  {t("stop")}
                 </Button>
               )}
               <Button
@@ -99,20 +101,18 @@ export function ChatPanel({
                 onClick={() => setMessages([])}
                 disabled={messages.length === 0 || status !== "ready"}
               >
-                Clear
+                {t("clear")}
               </Button>
             </div>
 
             <Button type="submit" disabled={!canSend}>
-              Send
+              {t("send")}
             </Button>
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            Don&apos;t sign anything you don&apos;t understand. If you share personal docs, redact Aadhaar/phone where possible.
-          </p>
+          <p className="text-xs text-muted-foreground">{t("note")}</p>
         </form>
       </div>
     </div>
-  );
+  )
 }

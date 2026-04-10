@@ -1,11 +1,12 @@
-"use client";
+"use client"
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
-import { Loader2, ShieldCheckIcon } from "lucide-react";
-import { toast } from "sonner";
+import { useState, useTransition } from "react"
+import { useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
+import { Loader2, ShieldCheckIcon } from "lucide-react"
+import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -13,21 +14,23 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { authClient } from "@/lib/auth/auth-client";
-import { getCallbackURL } from "@/utils/shared";
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { authClient } from "@/lib/auth/auth-client"
+import { useRouter } from "@/i18n/navigation"
+import { getCallbackURL } from "@/utils/shared"
 
 export default function TwoFactor() {
-  const [code, setCode] = useState("");
-  const [isPending, startTransition] = useTransition();
-  const router = useRouter();
-  const params = useSearchParams();
+  const t = useTranslations("AuthTwoFactor")
+  const [code, setCode] = useState("")
+  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
+  const params = useSearchParams()
 
   function onVerify() {
     if (!code.trim()) {
-      toast.error("Enter the code from your authenticator app.");
-      return;
+      toast.error(t("enterCode"))
+      return
     }
 
     startTransition(async () => {
@@ -35,44 +38,51 @@ export default function TwoFactor() {
         code: code.trim(),
         fetchOptions: {
           onSuccess() {
-            toast.success("Verified");
-            router.push(getCallbackURL(params));
+            toast.success(t("verified"))
+            router.push(getCallbackURL(params))
           },
           onError(ctx) {
-            toast.error(ctx.error.message || "Verification failed");
+            toast.error(ctx.error.message || t("verifyFailed"))
           },
         },
-      });
-    });
+      })
+    })
   }
 
   return (
     <Card className="max-w-md bg-gradient-to-b from-neutral-100/50 to-white/30 backdrop-blur-lg dark:from-neutral-900/50 dark:to-neutral-900/30">
       <CardHeader className="text-center">
-        <CardTitle className="text-xl md:text-2xl">Two-factor verification</CardTitle>
-        <CardDescription>
-          Enter the 6-digit code to finish signing in.
-        </CardDescription>
+        <CardTitle className="text-xl md:text-2xl">{t("title")}</CardTitle>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
 
       <CardContent className="grid gap-3">
         <Input
           inputMode="numeric"
           autoComplete="one-time-code"
-          placeholder="123456"
+          placeholder={t("placeholder")}
           value={code}
           onChange={(e) => setCode(e.target.value)}
         />
 
-        <Button className="w-full gap-2" type="button" disabled={isPending} onClick={onVerify}>
-          {isPending ? <Loader2 className="size-4 animate-spin" /> : <ShieldCheckIcon className="size-4" />}
-          <span>{isPending ? "Verifying" : "Verify"}</span>
+        <Button
+          className="w-full gap-2"
+          type="button"
+          disabled={isPending}
+          onClick={onVerify}
+        >
+          {isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <ShieldCheckIcon className="size-4" />
+          )}
+          <span>{isPending ? t("verifying") : t("verify")}</span>
         </Button>
       </CardContent>
 
       <CardFooter className="text-center text-xs text-muted-foreground">
-        If you can&apos;t access your authenticator, you may need backup codes.
+        {t("footer")}
       </CardFooter>
     </Card>
-  );
+  )
 }

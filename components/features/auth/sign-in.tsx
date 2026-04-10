@@ -1,18 +1,8 @@
-"use client";
+"use client"
 
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useState, useTransition, useEffect } from "react";
+import { useEffect, useState, useTransition } from "react"
+import { useSearchParams } from "next/navigation"
+import { useTranslations } from "next-intl"
 import {
   ExternalLinkIcon,
   EyeIcon,
@@ -20,92 +10,115 @@ import {
   KeyIcon,
   Loader2,
   MailIcon,
-} from "lucide-react";
-import { authClient as client, signIn } from "@/lib/auth/auth-client";
-import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { useRouter, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
-import { getCallbackURL } from "@/utils/shared";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
+} from "lucide-react"
+import { toast } from "sonner"
+
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Separator } from "@/components/ui/separator"
+import { authClient as client, signIn } from "@/lib/auth/auth-client"
+import { Link, useRouter } from "@/i18n/navigation"
+import { cn } from "@/lib/utils"
+import { getCallbackURL } from "@/utils/shared"
 
 export default function SignIn() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isVisible, setIsVisible] = useState<boolean>(false);
-  const [loading, startTransition] = useTransition();
-  const [loadingAction, setLoadingAction] = useState<null | "email" | "passkey" | "social">(null);
-  const [rememberMe, setRememberMe] = useState(false);
-  const router = useRouter();
-  const params = useSearchParams();
-  const [mounted, setMounted] = useState(false);
+  const t = useTranslations("AuthSignIn")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [isVisible, setIsVisible] = useState<boolean>(false)
+  const [, startTransition] = useTransition()
+  const [loadingAction, setLoadingAction] = useState<
+    null | "email" | "passkey" | "social"
+  >(null)
+  const [rememberMe, setRememberMe] = useState(false)
+  const router = useRouter()
+  const params = useSearchParams()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true);
+    setMounted(true)
 
-    // Guard against older browsers and server-side rendering
-    if (typeof window === "undefined") return;
-    if (!window.PublicKeyCredential || !PublicKeyCredential.isConditionalMediationAvailable)
-      return;
+    // Guard against older browsers and server-side rendering.
+    if (typeof window === "undefined") return
+    if (
+      !window.PublicKeyCredential ||
+      !PublicKeyCredential.isConditionalMediationAvailable
+    ) {
+      return
+    }
 
     try {
       const available =
         PublicKeyCredential.isConditionalMediationAvailable &&
-        PublicKeyCredential.isConditionalMediationAvailable();
-      if (!available) return;
+        PublicKeyCredential.isConditionalMediationAvailable()
+      if (!available) return
 
-      signIn.passkey({ autoFill: true });
-    } catch (e) {
-      console.debug("passkey conditional UI not available", e);
+      signIn.passkey({ autoFill: true })
+    } catch (error) {
+      console.debug("passkey conditional UI not available", error)
     }
-  }, [email]);
+  }, [email])
 
   const LastUsedIndicator = () => (
-    <span className="ml-auto absolute -top-4 w-max h-max px-2 py-1 inline-block text-tiny bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-md font-medium">
-      Last Used
+    <span className="absolute -top-4 ml-auto inline-block h-max w-max rounded-md bg-blue-100 px-2 py-1 text-tiny font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+      {t("lastUsed")}
     </span>
-  );
+  )
 
-  const toggleVisibility = () => setIsVisible((prevState) => !prevState);
+  const toggleVisibility = () => setIsVisible((prevState) => !prevState)
 
   return (
-    <Card className="max-w-md bg-gradient-to-b from-neutral-100/50 to-white/30 dark:from-neutral-900/50 dark:to-neutral-900/30 backdrop-blur-lg">
-      <CardHeader className=" text-center">
-        <CardTitle className="text-xl md:text-2xl">Welcome Back!</CardTitle>
+    <Card className="max-w-md bg-gradient-to-b from-neutral-100/50 to-white/30 backdrop-blur-lg dark:from-neutral-900/50 dark:to-neutral-900/30">
+      <CardHeader className="text-center">
+        <CardTitle className="text-xl md:text-2xl">{t("title")}</CardTitle>
         <CardDescription className="text-sm">
           <div className="leading-tight sm:text-balance">
-            Please sign in either via email, your google account or using a registered passkey.
+            {t("description")}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="link" size="none" className="inline px-1">Need help?</Button>
+                <Button variant="link" size="none" className="inline px-1">
+                  {t("needHelp")}
+                </Button>
               </PopoverTrigger>
               <PopoverContent className="w-xs text-sm text-muted-foreground">
-                If you've forgotten your password, you can reset it by clicking on the "Forgot password?" link on the sign-in page.
+                {t("helpReset")}
                 <Separator />
-                Passkey will work only if you have previously registered a passkey with us on this device.
+                {t("helpPasskey")}
               </PopoverContent>
             </Popover>
           </div>
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-4 relative">
-          <section className="flex items-center justify-between w-full flex-col gap-2">
+        <div className="relative grid gap-4">
+          <section className="flex w-full flex-col items-center justify-between gap-2">
             <div className="relative w-full">
               <Input
                 id="email"
                 type="email"
-                placeholder="Your email address"
+                placeholder={t("emailPlaceholder")}
                 required
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                }}
+                onChange={(e) => setEmail(e.target.value)}
                 value={email}
                 autoComplete="username webauthn"
-                className="w-full peer ps-9"
+                className="peer w-full ps-9"
               />
-              <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 inset-s-0 flex items-center justify-center ps-3 peer-disabled:opacity-50">
+              <div className="pointer-events-none absolute inset-y-0 inset-s-0 flex items-center justify-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
                 <MailIcon size={16} aria-hidden="true" />
               </div>
             </div>
@@ -114,20 +127,20 @@ export default function SignIn() {
               <Input
                 id="password"
                 type={isVisible ? "text" : "password"}
-                placeholder="Your password"
+                placeholder={t("passwordPlaceholder")}
                 autoComplete="current-password webauthn"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full peer ps-9 pe-9"
+                className="peer w-full ps-9 pe-9"
               />
-              <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 inset-s-0 flex items-center justify-center ps-3 peer-disabled:opacity-50">
+              <div className="pointer-events-none absolute inset-y-0 inset-s-0 flex items-center justify-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
                 <KeyIcon size={16} aria-hidden="true" />
               </div>
               <button
-                className="text-muted-foreground/80 hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 absolute inset-y-0 inset-e-0 flex h-full w-9 items-center justify-center rounded-e-md transition-[color,box-shadow] outline-none focus:z-10 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+                className="absolute inset-y-0 inset-e-0 flex h-full w-9 items-center justify-center rounded-e-md text-muted-foreground/80 transition-[color,box-shadow] outline-none hover:text-foreground focus:z-10 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
                 type="button"
                 onClick={toggleVisibility}
-                aria-label={isVisible ? "Hide password" : "Show password"}
+                aria-label={isVisible ? t("hidePassword") : t("showPassword")}
                 aria-pressed={isVisible}
                 aria-controls="password"
               >
@@ -139,99 +152,108 @@ export default function SignIn() {
               </button>
             </div>
           </section>
+
           <section className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Checkbox
                 id="remember"
                 onClick={() => {
-                  setRememberMe(!rememberMe);
+                  setRememberMe(!rememberMe)
                 }}
               />
-              <Label htmlFor="remember">Remember me</Label>
+              <Label htmlFor="remember">{t("rememberMe")}</Label>
             </div>
             <div className="flex items-center">
-              <Link href="/forgot-password" className="ml-auto inline-block text-sm underline">
-                Forgot password?
+              <Link
+                href="/forgot-password"
+                className="ml-auto inline-block text-sm underline"
+              >
+                {t("forgotPassword")}
               </Link>
             </div>
           </section>
-          <section className="flex flex-col gap-2 mt-2">
+
+          <section className="mt-2 flex flex-col gap-2">
             <div
               className={cn(
-                "w-full gap-2 flex items-center",
-                "justify-between flex-col relative",
+                "flex w-full items-center gap-2",
+                "relative flex-col justify-between"
               )}
             >
               <Button
                 type="submit"
-                className="w-full flex items-center justify-center"
+                className="flex w-full items-center justify-center"
                 disabled={loadingAction !== null && loadingAction !== "email"}
                 onClick={async () => {
-                  setLoadingAction("email");
+                  setLoadingAction("email")
                   startTransition(async () => {
                     try {
                       await signIn.email(
                         { email, password, rememberMe },
                         {
-                          onSuccess(context) {
-                            setLoadingAction(null);
-                            toast.success("Successfully signed in. Redirecting...");
-                            router.push(getCallbackURL(params));
+                          onSuccess() {
+                            setLoadingAction(null)
+                            toast.success(t("signInSuccess"))
+                            router.push(getCallbackURL(params))
                           },
                           onError(ctx) {
-                            setLoadingAction(null);
-                            toast.error(ctx?.error?.message || "Sign in failed");
+                            setLoadingAction(null)
+                            toast.error(
+                              ctx?.error?.message || t("signInFailed")
+                            )
                           },
-                        },
-                      );
-                    } catch (err) {
-                      setLoadingAction(null);
-                      if (err instanceof Error) toast.error(err.message);
+                        }
+                      )
+                    } catch (error) {
+                      setLoadingAction(null)
+                      if (error instanceof Error) toast.error(error.message)
                     }
-                  });
+                  })
                 }}
               >
                 {loadingAction === "email" ? (
-                  <Loader2 size={16} className="animate-spin w-full" />
+                  <Loader2 size={16} className="w-full animate-spin" />
                 ) : (
                   <MailIcon />
                 )}
-                <span>Login with Email</span>
+                <span>{t("emailButton")}</span>
 
-                {mounted && client.isLastUsedLoginMethod("email") && <LastUsedIndicator />}
+                {mounted && client.isLastUsedLoginMethod("email") && (
+                  <LastUsedIndicator />
+                )}
               </Button>
             </div>
-            {/* Passkey sign-in button */}
+
             <div
               className={cn(
-                "w-full gap-2 flex items-center",
-                "justify-between flex-col relative",
+                "flex w-full items-center gap-2",
+                "relative flex-col justify-between"
               )}
             >
               <Button
                 variant="outline"
-                className="w-full gap-2 flex items-center"
+                className="flex w-full items-center gap-2"
                 disabled={loadingAction !== null && loadingAction !== "passkey"}
                 onClick={async () => {
-                  setLoadingAction("passkey");
+                  setLoadingAction("passkey")
                   try {
                     await signIn.passkey({
                       autoFill: false,
                       fetchOptions: {
                         onSuccess() {
-                          setLoadingAction(null);
-                          toast.success("Signed in with passkey");
-                          router.push(getCallbackURL(params));
+                          setLoadingAction(null)
+                          toast.success(t("passkeySuccess"))
+                          router.push(getCallbackURL(params))
                         },
                         onError(ctx) {
-                          setLoadingAction(null);
-                          toast.error(ctx?.error?.message || "Passkey sign-in failed");
+                          setLoadingAction(null)
+                          toast.error(ctx?.error?.message || t("passkeyFailed"))
                         },
                       },
-                    });
-                  } catch (err) {
-                    setLoadingAction(null);
-                    if (err instanceof Error) toast.error(err.message);
+                    })
+                  } catch (error) {
+                    setLoadingAction(null)
+                    if (error instanceof Error) toast.error(error.message)
                   }
                 }}
               >
@@ -240,31 +262,31 @@ export default function SignIn() {
                 ) : (
                   <KeyIcon />
                 )}
-                <span>Login with Passkey</span>
+                <span>{t("passkeyButton")}</span>
               </Button>
             </div>
 
             <div
               className={cn(
-                "w-full gap-2 flex items-center",
-                "justify-between flex-col relative",
+                "flex w-full items-center gap-2",
+                "relative flex-col justify-between"
               )}
             >
               <Button
                 variant="outline"
-                className={cn("w-full gap-2 flex items-center relative")}
+                className={cn("relative flex w-full items-center gap-2")}
                 disabled={loadingAction !== null && loadingAction !== "social"}
                 onClick={async () => {
-                  setLoadingAction("social");
+                  setLoadingAction("social")
                   try {
                     await signIn.social({
                       provider: "google",
                       callbackURL: "/dashboard",
-                    });
-                    setLoadingAction(null);
-                  } catch (err) {
-                    setLoadingAction(null);
-                    if (err instanceof Error) toast.error(err.message);
+                    })
+                    setLoadingAction(null)
+                  } catch (error) {
+                    setLoadingAction(null)
+                    if (error instanceof Error) toast.error(error.message)
                   }
                 }}
               >
@@ -280,42 +302,54 @@ export default function SignIn() {
                     <path
                       fill="#4285F4"
                       d="M255.878 133.451c0-10.734-.871-18.567-2.756-26.69H130.55v48.448h71.947c-1.45 12.04-9.283 30.172-26.69 42.356l-.244 1.622l38.755 30.023l2.685.268c24.659-22.774 38.875-56.282 38.875-96.027"
-                    ></path>
+                    />
                     <path
                       fill="#34A853"
                       d="M130.55 261.1c35.248 0 64.839-11.605 86.453-31.622l-41.196-31.913c-11.024 7.688-25.82 13.055-45.257 13.055c-34.523 0-63.824-22.773-74.269-54.25l-1.531.13l-40.298 31.187l-.527 1.465C35.393 231.798 79.49 261.1 130.55 261.1"
-                    ></path>
+                    />
                     <path
                       fill="#FBBC05"
                       d="M56.281 156.37c-2.756-8.123-4.351-16.827-4.351-25.82c0-8.994 1.595-17.697 4.206-25.82l-.073-1.73L15.26 71.312l-1.335.635C5.077 89.644 0 109.517 0 130.55s5.077 40.905 13.925 58.602z"
-                    ></path>
+                    />
                     <path
                       fill="#EB4335"
                       d="M130.55 50.479c24.514 0 41.05 10.589 50.479 19.438l36.844-35.974C195.245 12.91 165.798 0 130.55 0C79.49 0 35.393 29.301 13.925 71.947l42.211 32.783c10.59-31.477 39.891-54.251 74.414-54.251"
-                    ></path>
+                    />
                   </svg>
                 )}
-                <span>Login with Google</span>
-                {mounted && client.isLastUsedLoginMethod("google") && <LastUsedIndicator />}
+                <span>{t("googleButton")}</span>
+                {mounted && client.isLastUsedLoginMethod("google") && (
+                  <LastUsedIndicator />
+                )}
               </Button>
             </div>
           </section>
         </div>
       </CardContent>
       <CardFooter>
-        <div className="flex justify-center w-full flex-col text-center text-sm text-muted-foreground">
+        <div className="flex w-full flex-col justify-center text-center text-sm text-muted-foreground">
           <div className="flex-center-1 justify-center">
-            Facing Issues?{" "}
-            <Link href={"/contact"} className="text-primary underline cursor-pointer">Contact us</Link>{" "}
-            <ExternalLinkIcon className="size-3 inline" />
+            {t("facingIssues")}{" "}
+            <Link
+              href={"/contact"}
+              className="cursor-pointer text-primary underline"
+            >
+              {t("contactUs")}
+            </Link>{" "}
+            <ExternalLinkIcon className="inline size-3" />
           </div>
           <div className="flex-center-1 justify-center">
-            Don't have an account?{" "}
-            <Link href={"/sign-up"} className="text-primary underline cursor-pointer">Sign up</Link>{" "}
-            <ExternalLinkIcon className="size-3 inline" />
+            {t("dontHaveAccount")}{" "}
+            <Link
+              href={"/sign-up"}
+              className="cursor-pointer text-primary underline"
+            >
+              {t("signUp")}
+            </Link>{" "}
+            <ExternalLinkIcon className="inline size-3" />
           </div>
         </div>
       </CardFooter>
     </Card>
-  );
+  )
 }

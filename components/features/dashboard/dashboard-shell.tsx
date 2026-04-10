@@ -1,23 +1,29 @@
-"use client";
+"use client"
 
-import * as React from "react";
+import * as React from "react"
+import { useTranslations } from "next-intl"
 
-import { SignOutButton } from "@/components/features/auth/sign-out-button";
-import { AppSidebar, type DashboardUser } from "@/components/features/dashboard/app-sidebar";
-import { Separator } from "@/components/ui/separator";
+import { SignOutButton } from "@/components/features/auth/sign-out-button"
+import {
+  AppSidebar,
+  type DashboardUser,
+} from "@/components/features/dashboard/app-sidebar"
+import { Separator } from "@/components/ui/separator"
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@/components/ui/sidebar";
+} from "@/components/ui/sidebar"
 
 export function DashboardShell({
   user,
   children,
 }: {
-  user: DashboardUser;
-  children: React.ReactNode;
+  user: DashboardUser
+  children: React.ReactNode
 }) {
+  const t = useTranslations("Dashboard")
+
   return (
     <SidebarProvider>
       <AppSidebar user={user} />
@@ -26,9 +32,9 @@ export function DashboardShell({
           <SidebarTrigger />
           <Separator orientation="vertical" className="h-6" />
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium">Dashboard</div>
+            <div className="truncate text-sm font-medium">{t("title")}</div>
             <div className="truncate text-xs text-muted-foreground">
-              Zameen, kanoon, aur haq — one place.
+              {t("subtitle")}
             </div>
           </div>
           <SignOutButton />
@@ -36,5 +42,5 @@ export function DashboardShell({
         <main className="mx-auto w-full max-w-5xl p-4 md:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
-  );
+  )
 }

@@ -1,7 +1,13 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { BookOpenText, FileText, LayoutDashboard, UserRound } from "lucide-react";
+import * as React from "react"
+import { useTranslations } from "next-intl"
+import {
+  BookOpenText,
+  FileText,
+  LayoutDashboard,
+  UserRound,
+} from "lucide-react"
 
 import {
   Sidebar,
@@ -15,17 +21,21 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarSeparator,
-} from "@/components/ui/sidebar";
-import { FarmerProfileCredenza } from "@/components/features/profile/farmer-profile-credenza";
-import { cn } from "@/lib/utils";
+} from "@/components/ui/sidebar"
+import { FarmerProfileCredenza } from "@/components/features/profile/farmer-profile-credenza"
+import { Link } from "@/i18n/navigation"
+import { cn } from "@/lib/utils"
 
 export type DashboardUser = {
-  id: string;
-  name?: string | null;
-  email?: string | null;
-};
+  id: string
+  name?: string | null
+  email?: string | null
+}
 
 export function AppSidebar({ user }: { user: DashboardUser }) {
+  const tSidebar = useTranslations("Sidebar")
+  const tApp = useTranslations("App")
+
   return (
     <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader className="gap-3">
@@ -33,17 +43,17 @@ export function AppSidebar({ user }: { user: DashboardUser }) {
           <div
             className={cn(
               "grid size-9 place-items-center rounded-xl border",
-              "bg-gradient-to-br from-sidebar-accent/60 to-transparent"
+              "from-sidebar-accent/60 bg-gradient-to-br to-transparent"
             )}
           >
             <span className="text-sm font-semibold">KV</span>
           </div>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <div className="truncate text-sm font-semibold leading-tight">
-              Kisan Vakil
+            <div className="truncate text-sm leading-tight font-semibold">
+              {tApp("name")}
             </div>
-            <div className="truncate text-xs text-sidebar-foreground/70">
-              Pocket advocate
+            <div className="text-sidebar-foreground/70 truncate text-xs">
+              {tApp("tagline")}
             </div>
           </div>
         </div>
@@ -53,15 +63,15 @@ export function AppSidebar({ user }: { user: DashboardUser }) {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Home</SidebarGroupLabel>
+          <SidebarGroupLabel>{tSidebar("home")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <a href="/dashboard">
+                  <Link href="/dashboard">
                     <LayoutDashboard />
-                    <span>Dashboard</span>
-                  </a>
+                    <span>{tSidebar("overview")}</span>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -69,14 +79,14 @@ export function AppSidebar({ user }: { user: DashboardUser }) {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Identity</SidebarGroupLabel>
+          <SidebarGroupLabel>{tSidebar("profile")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <FarmerProfileCredenza>
                   <SidebarMenuButton>
                     <UserRound />
-                    <span>Farmer profile</span>
+                    <span>{tSidebar("farmerProfile")}</span>
                   </SidebarMenuButton>
                 </FarmerProfileCredenza>
               </SidebarMenuItem>
@@ -85,19 +95,19 @@ export function AppSidebar({ user }: { user: DashboardUser }) {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Records (MVP)</SidebarGroupLabel>
+          <SidebarGroupLabel>{tSidebar("tools")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton disabled>
                   <BookOpenText />
-                  <span>Land records</span>
+                  <span>{tSidebar("landRecords")}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton disabled>
                   <FileText />
-                  <span>Document vault</span>
+                  <span>{tSidebar("documentVault")}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -106,13 +116,13 @@ export function AppSidebar({ user }: { user: DashboardUser }) {
       </SidebarContent>
 
       <SidebarFooter className="gap-1 group-data-[collapsible=icon]:hidden">
-        <div className="rounded-lg border bg-sidebar-accent/20 p-3">
-          <div className="text-xs font-medium">Signed in</div>
-          <div className="mt-1 truncate text-xs text-sidebar-foreground/70">
+        <div className="bg-sidebar-accent/20 rounded-lg border p-3">
+          <div className="text-xs font-medium">{tSidebar("signedIn")}</div>
+          <div className="text-sidebar-foreground/70 mt-1 truncate text-xs">
             {user.email ?? user.name ?? user.id}
           </div>
         </div>
       </SidebarFooter>
     </Sidebar>
-  );
+  )
 }

@@ -1,19 +1,23 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { auth } from "@/lib/auth/auth";
-import { headers } from "next/headers";
+import { getTranslations } from "next-intl/server"
+import { headers } from "next/headers"
+
+import { Button } from "@/components/ui/button"
+import { Link } from "@/i18n/navigation"
+import { auth } from "@/lib/auth/auth"
 
 export async function SignInButton() {
+  const t = await getTranslations("Auth")
+
   const session = await auth.api.getSession({
     headers: await headers(),
-  });
+  })
 
   return (
     <Link
       href={session?.session ? "/dashboard" : "/sign-in"}
       className="flex justify-center"
     >
-      <Button className="gap-2  justify-between" variant="default">
+      <Button className="justify-between gap-2" variant="default">
         {!session?.session ? (
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -33,34 +37,33 @@ export async function SignInButton() {
             height="1.2em"
             viewBox="0 0 24 24"
           >
-            <path
-              fill="currentColor"
-              d="M2 3h20v18H2zm18 16V7H4v12z"
-            ></path>
+            <path fill="currentColor" d="M2 3h20v18H2zm18 16V7H4v12z"></path>
           </svg>
         )}
-        <span>{session?.session ? "Dashboard" : "Sign In"}</span>
+        <span>{session?.session ? t("dashboard") : t("signIn")}</span>
       </Button>
     </Link>
-  );
+  )
 }
 
 function checkOptimisticSession(headers: Headers) {
   const guessIsSignIn =
     headers.get("cookie")?.includes("better-auth.session") ||
-    headers.get("cookie")?.includes("__Secure-better-auth.session-token");
-  return !!guessIsSignIn;
+    headers.get("cookie")?.includes("__Secure-better-auth.session-token")
+  return !!guessIsSignIn
 }
 
 export async function SignInFallback() {
+  const t = await getTranslations("Auth")
+
   //to avoid flash of unauthenticated state
-  const guessIsSignIn = checkOptimisticSession(await headers());
+  const guessIsSignIn = checkOptimisticSession(await headers())
   return (
     <Link
       href={guessIsSignIn ? "/dashboard" : "/sign-in"}
       className="flex justify-center"
     >
-      <Button className="gap-2  justify-between" variant="default">
+      <Button className="justify-between gap-2" variant="default">
         {!guessIsSignIn ? (
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -80,14 +83,11 @@ export async function SignInFallback() {
             height="1.2em"
             viewBox="0 0 24 24"
           >
-            <path
-              fill="currentColor"
-              d="M2 3h20v18H2zm18 16V7H4v12z"
-            ></path>
+            <path fill="currentColor" d="M2 3h20v18H2zm18 16V7H4v12z"></path>
           </svg>
         )}
-        <span>{guessIsSignIn ? "Dashboard" : "Sign In"}</span>
+        <span>{guessIsSignIn ? t("dashboard") : t("signIn")}</span>
       </Button>
     </Link>
-  );
+  )
 }

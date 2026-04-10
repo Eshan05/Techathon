@@ -1,7 +1,8 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { toast } from "sonner";
+import * as React from "react"
+import { useTranslations } from "next-intl"
+import { toast } from "sonner"
 
 import {
   Credenza,
@@ -13,43 +14,30 @@ import {
   CredenzaHeader,
   CredenzaTitle,
   CredenzaTrigger,
-} from "@/components/ui/credenza";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from "@/components/ui/credenza"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 type FarmerProfile = {
-  userId: string;
-  fullName: string | null;
-  phone: string | null;
-  preferredLanguage: string;
-  state: string | null;
-  district: string | null;
-  tehsil: string | null;
-  village: string | null;
-};
-
-const LANGUAGE_OPTIONS: Array<{ code: string; label: string }> = [
-  { code: "hi", label: "Hindi" },
-  { code: "en", label: "English" },
-  { code: "mr", label: "Marathi" },
-  { code: "pa", label: "Punjabi" },
-  { code: "gu", label: "Gujarati" },
-  { code: "bn", label: "Bengali" },
-  { code: "ta", label: "Tamil" },
-  { code: "te", label: "Telugu" },
-  { code: "kn", label: "Kannada" },
-  { code: "ml", label: "Malayalam" },
-];
+  userId: string
+  fullName: string | null
+  phone: string | null
+  preferredLanguage: string
+  state: string | null
+  district: string | null
+  tehsil: string | null
+  village: string | null
+}
 
 function emptyProfile(): FarmerProfile {
   return {
@@ -61,39 +49,48 @@ function emptyProfile(): FarmerProfile {
     district: null,
     tehsil: null,
     village: null,
-  };
+  }
 }
 
-export function FarmerProfileCredenza({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = React.useState(false);
-  const [loading, setLoading] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
-  const [profile, setProfile] = React.useState<FarmerProfile>(() => emptyProfile());
+export function FarmerProfileCredenza({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const t = useTranslations("Profile")
+  const tLocale = useTranslations("Locale")
+
+  const [open, setOpen] = React.useState(false)
+  const [loading, setLoading] = React.useState(false)
+  const [saving, setSaving] = React.useState(false)
+  const [profile, setProfile] = React.useState<FarmerProfile>(() =>
+    emptyProfile()
+  )
 
   const loadProfile = React.useCallback(async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const res = await fetch("/api/farmer-profiles", { cache: "no-store" });
+      const res = await fetch("/api/farmer-profiles", { cache: "no-store" })
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error || "Could not load profile");
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || t("loadFailed"))
       }
-      const json = (await res.json()) as { data: FarmerProfile };
-      setProfile(json.data);
+      const json = (await res.json()) as { data: FarmerProfile }
+      setProfile(json.data)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not load profile");
+      toast.error(err instanceof Error ? err.message : t("loadFailed"))
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [t])
 
   React.useEffect(() => {
-    if (!open) return;
-    void loadProfile();
-  }, [open, loadProfile]);
+    if (!open) return
+    void loadProfile()
+  }, [open, loadProfile])
 
   async function save() {
-    setSaving(true);
+    setSaving(true)
     try {
       const res = await fetch("/api/farmer-profiles", {
         method: "PUT",
@@ -107,19 +104,19 @@ export function FarmerProfileCredenza({ children }: { children: React.ReactNode 
           tehsil: profile.tehsil,
           village: profile.village,
         }),
-      });
+      })
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error || "Could not save profile");
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || t("saveFailed"))
       }
 
-      toast.success("Profile saved");
-      setOpen(false);
+      toast.success(t("saved"))
+      setOpen(false)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save profile");
+      toast.error(err instanceof Error ? err.message : t("saveFailed"))
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
@@ -129,36 +126,39 @@ export function FarmerProfileCredenza({ children }: { children: React.ReactNode 
 
       <CredenzaContent className="max-w-2xl">
         <CredenzaHeader>
-          <CredenzaTitle>Farmer profile</CredenzaTitle>
-          <CredenzaDescription>
-            Keep this accurate — we use it to simplify forms, templates, and language.
-          </CredenzaDescription>
+          <CredenzaTitle>{t("title")}</CredenzaTitle>
+          <CredenzaDescription>{t("description")}</CredenzaDescription>
         </CredenzaHeader>
 
         <CredenzaBody className="pb-2">
           <Tabs defaultValue="basics" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="basics">Basics</TabsTrigger>
-              <TabsTrigger value="location">Location</TabsTrigger>
-              <TabsTrigger value="preferences">Preferences</TabsTrigger>
+              <TabsTrigger value="basics">{t("tabBasics")}</TabsTrigger>
+              <TabsTrigger value="location">{t("tabLocation")}</TabsTrigger>
+              <TabsTrigger value="preferences">
+                {t("tabPreferences")}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="basics" className="mt-4 space-y-4">
               <div className="grid gap-2">
-                <Label htmlFor="fullName">Full name</Label>
+                <Label htmlFor="fullName">{t("fullName")}</Label>
                 <Input
                   id="fullName"
                   placeholder="e.g. Ramesh Kumar"
                   value={profile.fullName ?? ""}
                   onChange={(e) =>
-                    setProfile((p) => ({ ...p, fullName: e.target.value || null }))
+                    setProfile((p) => ({
+                      ...p,
+                      fullName: e.target.value || null,
+                    }))
                   }
                   disabled={loading || saving}
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">{t("phone")}</Label>
                 <Input
                   id="phone"
                   inputMode="tel"
@@ -173,26 +173,29 @@ export function FarmerProfileCredenza({ children }: { children: React.ReactNode 
 
               <Separator />
               <div className="text-xs text-muted-foreground">
-                Tip: You can keep phone blank if you don’t want it stored.
+                {t("phoneTip")}
               </div>
             </TabsContent>
 
             <TabsContent value="location" className="mt-4 space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="state">State</Label>
+                  <Label htmlFor="state">{t("state")}</Label>
                   <Input
                     id="state"
                     placeholder="e.g. Maharashtra"
                     value={profile.state ?? ""}
                     onChange={(e) =>
-                      setProfile((p) => ({ ...p, state: e.target.value || null }))
+                      setProfile((p) => ({
+                        ...p,
+                        state: e.target.value || null,
+                      }))
                     }
                     disabled={loading || saving}
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="district">District</Label>
+                  <Label htmlFor="district">{t("district")}</Label>
                   <Input
                     id="district"
                     placeholder="e.g. Pune"
@@ -210,25 +213,31 @@ export function FarmerProfileCredenza({ children }: { children: React.ReactNode 
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="tehsil">Tehsil / Taluka</Label>
+                  <Label htmlFor="tehsil">{t("tehsil")}</Label>
                   <Input
                     id="tehsil"
                     placeholder="e.g. Haveli"
                     value={profile.tehsil ?? ""}
                     onChange={(e) =>
-                      setProfile((p) => ({ ...p, tehsil: e.target.value || null }))
+                      setProfile((p) => ({
+                        ...p,
+                        tehsil: e.target.value || null,
+                      }))
                     }
                     disabled={loading || saving}
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="village">Village</Label>
+                  <Label htmlFor="village">{t("village")}</Label>
                   <Input
                     id="village"
                     placeholder="e.g. Wadgaon"
                     value={profile.village ?? ""}
                     onChange={(e) =>
-                      setProfile((p) => ({ ...p, village: e.target.value || null }))
+                      setProfile((p) => ({
+                        ...p,
+                        village: e.target.value || null,
+                      }))
                     }
                     disabled={loading || saving}
                   />
@@ -238,7 +247,7 @@ export function FarmerProfileCredenza({ children }: { children: React.ReactNode 
 
             <TabsContent value="preferences" className="mt-4 space-y-4">
               <div className="grid gap-2">
-                <Label>Preferred language</Label>
+                <Label>{t("preferredLanguage")}</Label>
                 <Select
                   value={profile.preferredLanguage}
                   onValueChange={(value) =>
@@ -247,21 +256,18 @@ export function FarmerProfileCredenza({ children }: { children: React.ReactNode 
                   disabled={loading || saving}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose" />
+                    <SelectValue placeholder={tLocale("label")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {LANGUAGE_OPTIONS.map((l) => (
-                      <SelectItem key={l.code} value={l.code}>
-                        {l.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="hi">{tLocale("hindi")}</SelectItem>
+                    <SelectItem value="mr">{tLocale("marathi")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <Separator />
               <div className="text-xs text-muted-foreground">
-                Voice summaries + dialect tuning will hook into this later.
+                {t("voiceTip")}
               </div>
             </TabsContent>
           </Tabs>
@@ -270,14 +276,14 @@ export function FarmerProfileCredenza({ children }: { children: React.ReactNode 
         <CredenzaFooter className="gap-2">
           <CredenzaClose asChild>
             <Button variant="outline" disabled={saving}>
-              Cancel
+              {t("cancel")}
             </Button>
           </CredenzaClose>
           <Button onClick={save} disabled={loading || saving}>
-            {saving ? "Saving…" : "Save"}
+            {saving ? t("saving") : t("save")}
           </Button>
         </CredenzaFooter>
       </CredenzaContent>
     </Credenza>
-  );
+  )
 }

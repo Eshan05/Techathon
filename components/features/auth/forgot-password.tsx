@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useState } from "react";
+import { type FormEvent, useState } from "react"
+import { useTranslations } from "next-intl"
 import {
   AlertCircle,
   ArrowLeft,
@@ -9,10 +9,11 @@ import {
   Loader2,
   MailIcon,
   ShieldCheckIcon,
-} from "lucide-react";
+} from "lucide-react"
+import { useLocale } from "next-intl"
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -20,54 +21,56 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { authClient } from "@/lib/auth/auth-client";
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { authClient } from "@/lib/auth/auth-client"
+import { Link } from "@/i18n/navigation"
 
 export default function ForgotPassword() {
-  const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [error, setError] = useState("");
+  const t = useTranslations("AuthForgotPassword")
+  const locale = useLocale()
+  const [email, setEmail] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [error, setError] = useState("")
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setIsSubmitting(true);
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError("")
+    setIsSubmitting(true)
 
     try {
       await authClient.requestPasswordReset({
         email,
-        redirectTo: "/reset-password",
-      });
-      setIsSubmitted(true);
+        redirectTo: `/${locale}/reset-password`,
+      })
+      setIsSubmitted(true)
     } catch {
-      setError("Unable to send a reset link right now. Please try again in a moment.");
+      setError(t("sendFailed"))
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
   }
 
   if (isSubmitted) {
     return (
-      <Card className="max-w-md bg-gradient-to-b from-neutral-100/50 to-white/30 dark:from-neutral-900/50 dark:to-neutral-900/30 backdrop-blur-lg">
+      <Card className="max-w-md bg-gradient-to-b from-neutral-100/50 to-white/30 backdrop-blur-lg dark:from-neutral-900/50 dark:to-neutral-900/30">
         <CardHeader className="text-center">
           <div className="mx-auto flex size-12 items-center justify-center rounded-full border border-border bg-background text-foreground">
             <CheckCircle2 className="size-5" />
           </div>
-          <CardTitle className="text-xl md:text-2xl">Check your email</CardTitle>
+          <CardTitle className="text-xl md:text-2xl">
+            {t("submittedTitle")}
+          </CardTitle>
           <CardDescription className="text-sm">
-            If the address exists, a reset link has been sent to{" "}
-            <span className="font-medium text-foreground">{email}</span>.
+            {t("submittedDescription", { email })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert>
             <ShieldCheckIcon className="size-4" />
-            <AlertTitle>Password reset requested</AlertTitle>
-            <AlertDescription>
-              Check your inbox and spam folder. The link expires for security and should only be used on a trusted device.
-            </AlertDescription>
+            <AlertTitle>{t("requestedTitle")}</AlertTitle>
+            <AlertDescription>{t("requestedDescription")}</AlertDescription>
           </Alert>
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
@@ -77,34 +80,34 @@ export default function ForgotPassword() {
             onClick={() => setIsSubmitted(false)}
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
+            {t("back")}
           </Button>
           <Button asChild variant="outline" className="w-full">
             <Link href="/sign-in">
               <ArrowLeft className="h-4 w-4" />
-              Return to sign in
+              {t("returnToSignIn")}
             </Link>
           </Button>
           <Button asChild variant="outline" className="w-full">
             <Link href="/sign-up">
               <MailIcon className="h-4 w-4" />
-              Create a new account
+              {t("createAccount")}
             </Link>
           </Button>
         </CardFooter>
       </Card>
-    );
+    )
   }
 
   return (
-    <Card className="max-w-md bg-gradient-to-b from-neutral-100/50 to-white/30 dark:from-neutral-900/50 dark:to-neutral-900/30 backdrop-blur-lg">
+    <Card className="max-w-md bg-gradient-to-b from-neutral-100/50 to-white/30 backdrop-blur-lg dark:from-neutral-900/50 dark:to-neutral-900/30">
       <CardHeader className="text-center">
         <div className="mx-auto flex size-12 items-center justify-center rounded-full border border-border bg-background px-3 text-sm font-semibold tracking-tight text-foreground">
           TS
         </div>
-        <CardTitle className="text-xl md:text-2xl">Forgot password</CardTitle>
+        <CardTitle className="text-xl md:text-2xl">{t("title")}</CardTitle>
         <CardDescription className="text-sm">
-          Enter the email address you used when you joined and we&apos;ll send you instructions to reset your password.
+          {t("description")}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -113,14 +116,14 @@ export default function ForgotPassword() {
             <Input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("emailPlaceholder")}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
               autoComplete="email"
-              className="w-full peer ps-9"
+              className="peer w-full ps-9"
             />
-            <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 inset-s-0 flex items-center justify-center ps-3 peer-disabled:opacity-50">
+            <div className="pointer-events-none absolute inset-y-0 inset-s-0 flex items-center justify-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
               <MailIcon size={16} aria-hidden="true" />
             </div>
           </div>
@@ -134,19 +137,23 @@ export default function ForgotPassword() {
 
           <Alert>
             <ShieldCheckIcon className="size-4" />
-            <AlertTitle>Security note</AlertTitle>
+            <AlertTitle>{t("securityTitle")}</AlertTitle>
             <AlertDescription className="text-xs">
-              We do not email passwords. This flow only sends a temporary reset link if the account exists.
+              {t("securityDescription")}
             </AlertDescription>
           </Alert>
 
-          <Button className="w-full gap-2" type="submit" disabled={isSubmitting}>
+          <Button
+            className="w-full gap-2"
+            type="submit"
+            disabled={isSubmitting}
+          >
             {isSubmitting ? (
               <Loader2 size={16} className="animate-spin" />
             ) : (
               <MailIcon size={16} />
             )}
-            <span>Send reset link</span>
+            <span>{t("submit")}</span>
           </Button>
         </form>
       </CardContent>
@@ -154,16 +161,16 @@ export default function ForgotPassword() {
         <Button asChild variant="outline" className="w-full">
           <Link href="/sign-in">
             <ArrowLeft className="h-4 w-4" />
-            Back to sign in
+            {t("backToSignIn")}
           </Link>
         </Button>
         <Button asChild variant="outline" className="w-full">
           <Link href="/sign-up">
             <MailIcon className="h-4 w-4" />
-            Need an account?
+            {t("needAccount")}
           </Link>
         </Button>
       </CardFooter>
     </Card>
-  );
+  )
 }

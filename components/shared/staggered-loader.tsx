@@ -29,12 +29,12 @@ export const CircularBarsSpinnerLoader = ({
         `}
       </style>
       <div
-        aria-hidden='true'
-        className='relative flex size-8 items-center justify-center'
+        aria-hidden="true"
+        className="relative flex size-8 items-center justify-center"
       >
         {[...new Array(numberOfBars)].map((_, index) => (
           <div
-            className='absolute rounded-[1px] bg-neutral-700 dark:invert'
+            className="absolute rounded-[1px] bg-neutral-700 dark:invert"
             key={`circular-bars-spinner-loader-bar-${index}`}
             style={{
               width: `${width}px`,
@@ -47,7 +47,7 @@ export const CircularBarsSpinnerLoader = ({
             }}
           />
         ))}
-        <span className='sr-only'>Loading...</span>
+        <span className="sr-only">Loading...</span>
       </div>
     </>
   )
