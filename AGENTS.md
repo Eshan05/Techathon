@@ -9,26 +9,18 @@ Core features:
 * Document vault for land papers, IDs, agreements, court notices, and receipts
 * Scheme checker to find eligible government subsidies, loans, and grants
 * Step-by-step claim filing for crop insurance, compensation, and disaster relief
-* Complaint and grievance filing for electricity, irrigation, procurement, or revenue issues
 * Voice search and voice notes for low-literacy users
 * Regional language support with dialect-friendly UI
 * Offline mode for storing documents and drafts when network is weak
+* Loan and credit guidance with repayment planning
 
 Strong “vakil” features:
 
 * Legal notice generator for tenancy, land dispute, theft, and payment defaults
-* Case tracker for court dates, status updates, and document reminders
 * Template library for affidavits, applications, RTI requests, and complaints
 * Red-flag checker for fraudulent land sale, fake agents, and bad loan terms
 * Evidence capture tools for photos, video, geo-tagging, and timestamps
 
-Farmer utility features:
-
-* Weather alerts, flood warnings, heat alerts, and pest risk updates
-* Crop advisory based on season, soil, and location
-* Market price lookup for mandis and nearby buyers
-* Input cost calculator for seed, fertilizer, labor, and transport
-* Loan and credit guidance with repayment planning
 
 Trust and usability features:
 
@@ -41,7 +33,6 @@ Trust and usability features:
 Best-priority MVP version:
 
 1. Land record lookup
-2. Scheme eligibility checker
 3. Legal notice and complaint templates
 4. Document vault
 5. Expert chat in local language
@@ -94,3 +85,13 @@ ABSOLUTELY NON-NEGOTIABLE:
 7. Always do `pnpm i` before `pnpm dev`. After any changes are done always make sure to do `lint:ts` and `format`.
 8. Card-y UI should not be the first thing you go for, unless necessary
 9. Keep packages upto their latest stable releases
+
+## Extra notes for reference
+
+1. Bhu-Aadhaar (ULPIN)
+2. PM-Kisan 
+3. Fasal Bima
+4. Hidden cost scanner
+5. Kisan Credit Card (KCC)
+6. Kisan Pehchan Patra (Farmer ID)
+7. PM Dhan-Dhaanya Krishi Yojana
