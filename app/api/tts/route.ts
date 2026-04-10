@@ -5,6 +5,27 @@ const client = new SarvamAIClient({
   apiSubscriptionKey: process.env.SARVAM_API_KEY,
 })
 
+type TtsTargetLanguage = NonNullable<
+  Parameters<typeof client.textToSpeech.convert>[0]["target_language_code"]
+>
+
+const ALLOWED_TARGET_LANGUAGES = new Set<TtsTargetLanguage>([
+  "hi-IN",
+  "mr-IN",
+  "gu-IN",
+  "ta-IN",
+  "te-IN",
+  "kn-IN",
+  "bn-IN",
+  "pa-IN",
+])
+
+function resolveTargetLanguage(input: string): TtsTargetLanguage {
+  return ALLOWED_TARGET_LANGUAGES.has(input as TtsTargetLanguage)
+    ? (input as TtsTargetLanguage)
+    : "hi-IN"
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { text, language } = await req.json()
@@ -13,9 +34,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing text" }, { status: 400 })
     }
 
+    const targetLanguage =
+      typeof language === "string" ? resolveTargetLanguage(language) : "hi-IN"
+
     const response = await client.textToSpeech.convert({
       text: text,
-      target_language_code: language || "hi-IN",
+      target_language_code: targetLanguage,
     })
 
     const base64Audio = response.audios?.[0]

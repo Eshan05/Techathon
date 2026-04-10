@@ -32,7 +32,7 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-2 right-2 z-50">
         <LocaleSwitcher />
       </div>
       {children}

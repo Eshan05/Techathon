@@ -40,7 +40,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-2">
           <div
             className={cn(
-              "grid size-9 place-items-center rounded-xl border",
+              "grid size-8! place-items-center rounded-xl border",
               "from-sidebar-accent/60 bg-gradient-to-br to-transparent"
             )}
           >
@@ -51,7 +51,7 @@ export function AppSidebar() {
               {tApp("name")}
             </div>
             <div className="text-sidebar-foreground/70 truncate text-xs">
-              {tApp("tagline")}
+              {/* {tApp("tagline")} */}
             </div>
           </div>
         </div>

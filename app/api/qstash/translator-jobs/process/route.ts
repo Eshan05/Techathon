@@ -16,10 +16,17 @@ import {
   setTranslatorJobStatus,
   type TranslatorInsight,
   type TranslatorJobStatus,
+  type TranslatorOcrPreference,
 } from "@/lib/qstash/translator-jobs"
 
-import { GoogleGenAI } from "@google/genai"
 import { SarvamAIClient } from "sarvamai"
+
+import {
+  getHttpStatusFromUnknown,
+  retryWithExponentialBackoff,
+} from "@/lib/ai/retry"
+
+import { extractTextWithSarvamDocumentIntelligence } from "@/lib/ai/sarvam-document-intelligence"
 
 import { getChatModel, resolveChatProfile } from "@/lib/ai"
 import { generateText } from "ai"
@@ -44,7 +51,10 @@ const sarvam = new SarvamAIClient({
   apiSubscriptionKey: process.env.SARVAM_API_KEY,
 })
 
-const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+function resolveOcrOrder(_pref?: TranslatorOcrPreference) {
+  // Sarvam-only for OCR in this pipeline.
+  return ["sarvam"] as const
+}
 
 function approxTokensFromChars(chars: number) {
   // Conservative heuristic for Latin-ish text.
@@ -103,12 +113,19 @@ function splitIntoChunks(text: string, maxChars: number): string[] {
   return chunks
 }
 
-async function extractPdfPagesText(bytes: Uint8Array): Promise<string[]> {
+async function extractPdfPagesText(
+  bytes: Uint8Array,
+  onPage?: (info: {
+    pageNumber: number
+    totalPages: number
+  }) => void | Promise<void>
+): Promise<string[]> {
   const task = getDocument({ data: bytes, disableWorker: true } as any)
   const pdf = await task.promise
 
   const pages: string[] = []
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
+    await onPage?.({ pageNumber: pageNum, totalPages: pdf.numPages })
     const page = await pdf.getPage(pageNum)
     const content = await page.getTextContent()
     const strings = (content.items as any[])
@@ -122,44 +139,88 @@ async function extractPdfPagesText(bytes: Uint8Array): Promise<string[]> {
   return pages
 }
 
-async function extractTextFromImage(opts: {
-  base64: string
+async function extractTextWithSarvamOcr(opts: {
+  bytes: Uint8Array
   mimeType: string
-}) {
-  const prompt =
-    "Read the attached image carefully and extract ALL the text as plain text. Do not translate. Preserve line breaks when it helps readability."
+  language: string
+  preference?: TranslatorOcrPreference
+  bumpStatus: (message: string) => Promise<void>
+}): Promise<string> {
+  // Sarvam-only.
+  void resolveOcrOrder(opts.preference)
 
-  const resp = await gemini.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            inlineData: {
-              data: opts.base64,
-              mimeType: opts.mimeType,
-            },
-          },
-          { text: prompt },
-        ],
+  return await retryWithExponentialBackoff(
+    async () => {
+      return await extractTextWithSarvamDocumentIntelligence({
+        bytes: opts.bytes,
+        mimeType: opts.mimeType,
+        language: opts.language,
+        onProgress: async (p) => {
+          const pagesLabel = p.totalPages
+            ? `${p.pagesProcessed}/${p.totalPages}`
+            : `${p.pagesProcessed}`
+          await opts.bumpStatus(`Sarvam OCR: ${pagesLabel} pages…`)
+        },
+      })
+    },
+    {
+      maxAttempts: 3,
+      baseDelayMs: 700,
+      maxDelayMs: 6000,
+      jitterRatio: 0.25,
+      shouldRetry: (e) => {
+        const status = getHttpStatusFromUnknown(e)
+        return status === 429 || status === 503
       },
-    ],
-    config: { temperature: 0.1 },
-  })
-
-  return (resp.text || "").trim()
+      onRetry: async (info) => {
+        await opts.bumpStatus(
+          `Sarvam OCR busy — retrying (${info.attempt + 1}/${info.maxAttempts})…`
+        )
+      },
+    }
+  )
 }
 
-async function translateChunk(opts: { text: string; targetLanguage: string }) {
-  const r = await sarvam.text.translate({
-    input: opts.text,
-    source_language_code: "auto",
-    target_language_code: opts.targetLanguage as any,
-    speaker_gender: "Male",
-  })
+async function translateChunk(opts: {
+  text: string
+  targetLanguage: string
+}): Promise<string> {
+  const MAX_CHARS = 950
 
-  return (r.translated_text || "").trim()
+  function hardSplit(text: string) {
+    const out: string[] = []
+    for (let i = 0; i < text.length; i += MAX_CHARS) {
+      out.push(text.slice(i, i + MAX_CHARS))
+    }
+    return out
+  }
+
+  const parts = splitIntoChunks(opts.text, MAX_CHARS)
+    .flatMap((p) => (p.length > MAX_CHARS ? hardSplit(p) : [p]))
+    .map((p) => p.trim())
+    .filter(Boolean)
+
+  const translatedParts: string[] = []
+
+  for (const part of parts.length ? parts : [opts.text]) {
+    const r = await sarvam.text.translate(
+      {
+        input: part,
+        source_language_code: "auto",
+        target_language_code: opts.targetLanguage as any,
+        speaker_gender: "Male",
+      },
+      {
+        timeoutInSeconds: 60,
+        maxRetries: 6,
+      }
+    )
+
+    const t = (r.translated_text || "").trim()
+    if (t) translatedParts.push(t)
+  }
+
+  return translatedParts.join("\n\n").trim()
 }
 
 function normalizeInsightList(value: unknown, maxItems: number) {
@@ -194,7 +255,7 @@ async function analyzeChunkInsight(opts: {
   if (!process.env.GROQ_API_KEY?.trim()) return null
 
   const profile = resolveChatProfile({ profileId: "kisan-vakil" })
-  const model = getChatModel(profile)
+  const model = await getChatModel(profile)
 
   const stateHint = opts.stateCode
     ? `\nState context (may affect stamp duty, registration, land revenue rules): ${opts.stateCode}.`
@@ -374,34 +435,78 @@ export async function POST(request: Request) {
       const mime = existing.mimeType.toLowerCase()
 
       const maxTokens = 800 // conservative for small/free models
-      const maxChars = Math.max(800, Math.min(2400, maxTokens * 4))
+      const computedChars = Math.max(800, Math.min(2400, maxTokens * 4))
+      // Sarvam translate can hard-fail above 1000 chars (mayura:v1).
+      const maxChars = Math.min(950, computedChars)
 
       const chunks: Array<{ pageNumber: number; text: string }> = []
 
       if (mime.includes("pdf")) {
-        const pages = await extractPdfPagesText(buf)
+        try {
+          const pages = await extractPdfPagesText(buf, async (info) => {
+            await bump({
+              state: "extracting",
+              stage: "extracting",
+              message: `Reading page ${info.pageNumber}/${info.totalPages}…`,
+            })
+          })
 
-        for (let pageNumber = 1; pageNumber <= pages.length; pageNumber += 1) {
-          const pageText = pages[pageNumber - 1] ?? ""
-          const parts = splitIntoChunks(pageText, maxChars)
+          const meaningfulPdfText = pages.join(" ").replace(/\s+/g, " ").trim()
 
-          if (!parts.length) {
-            chunks.push({ pageNumber, text: "" })
-            continue
+          if (meaningfulPdfText.length < 20) {
+            throw new Error("PDF appears scanned (no embedded text)")
           }
 
-          parts.forEach((t) => chunks.push({ pageNumber, text: t }))
+          for (
+            let pageNumber = 1;
+            pageNumber <= pages.length;
+            pageNumber += 1
+          ) {
+            const pageText = pages[pageNumber - 1] ?? ""
+            const parts = splitIntoChunks(pageText, maxChars)
+
+            if (!parts.length) {
+              chunks.push({ pageNumber, text: "" })
+              continue
+            }
+
+            parts.forEach((t) => chunks.push({ pageNumber, text: t }))
+          }
+        } catch (e) {
+          const extracted = await extractTextWithSarvamOcr({
+            bytes: buf,
+            mimeType: "application/pdf",
+            language: existing.targetLanguage,
+            preference: existing.ocrPreference,
+            bumpStatus: async (message) => {
+              await bump({
+                state: "extracting",
+                stage: "extracting",
+                message,
+              })
+            },
+          })
+          const parts = splitIntoChunks(extracted, maxChars)
+          parts.forEach((t) => chunks.push({ pageNumber: 1, text: t }))
         }
       } else if (mime.startsWith("text/")) {
         const text = new TextDecoder().decode(buf)
         const parts = splitIntoChunks(text, maxChars)
         parts.forEach((t) => chunks.push({ pageNumber: 1, text: t }))
       } else if (mime.startsWith("image/")) {
-        if (!process.env.GEMINI_API_KEY?.trim()) {
-          throw new Error("Missing GEMINI_API_KEY for image OCR")
-        }
-        const base64 = Buffer.from(buf).toString("base64")
-        const extracted = await extractTextFromImage({ base64, mimeType: mime })
+        const extracted = await extractTextWithSarvamOcr({
+          bytes: buf,
+          mimeType: mime,
+          language: existing.targetLanguage,
+          preference: existing.ocrPreference,
+          bumpStatus: async (message) => {
+            await bump({
+              state: "extracting",
+              stage: "extracting",
+              message,
+            })
+          },
+        })
         const parts = splitIntoChunks(extracted, maxChars)
         parts.forEach((t) => chunks.push({ pageNumber: 1, text: t }))
       } else {

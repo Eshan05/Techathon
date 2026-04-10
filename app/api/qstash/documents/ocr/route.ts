@@ -8,7 +8,11 @@ import { documentOcrChunks, documents } from "@/lib/db/schema"
 import { getQstashSigningKeys } from "@/lib/qstash/keys"
 import { setDocumentOcrJobStatus } from "@/lib/qstash/document-ocr-jobs"
 
-import { GoogleGenAI } from "@google/genai"
+import { extractTextWithSarvamDocumentIntelligence } from "@/lib/ai/sarvam-document-intelligence"
+import {
+  getHttpStatusFromUnknown,
+  retryWithExponentialBackoff,
+} from "@/lib/ai/retry"
 
 // pdfjs-dist doesn't ship perfect ESM typings for this path in all setups.
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -24,7 +28,31 @@ const payloadSchema = z
   })
   .strict()
 
-const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+async function extractTextWithSarvamOcr(opts: {
+  bytes: Uint8Array
+  mimeType: string
+  language: string
+}): Promise<string> {
+  return await retryWithExponentialBackoff(
+    async () => {
+      return await extractTextWithSarvamDocumentIntelligence({
+        bytes: opts.bytes,
+        mimeType: opts.mimeType,
+        language: opts.language,
+      })
+    },
+    {
+      maxAttempts: 3,
+      baseDelayMs: 700,
+      maxDelayMs: 6000,
+      jitterRatio: 0.25,
+      shouldRetry: (e) => {
+        const status = getHttpStatusFromUnknown(e)
+        return status === 429 || status === 503
+      },
+    }
+  )
+}
 
 function splitIntoChunks(text: string, maxChars: number): string[] {
   const cleaned = text.replace(/\r/g, "").trim()
@@ -93,39 +121,6 @@ async function extractPdfPagesText(bytes: Uint8Array): Promise<string[]> {
   }
 
   return pages
-}
-
-async function extractTextFromImage(opts: {
-  base64: string
-  mimeType: string
-}) {
-  if (!process.env.GEMINI_API_KEY?.trim()) {
-    throw new Error("GEMINI_API_KEY is not configured for image OCR")
-  }
-
-  const prompt =
-    "Read the attached image carefully and extract ALL the text as plain text. Do not translate. Preserve line breaks when it helps readability."
-
-  const resp = await gemini.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            inlineData: {
-              data: opts.base64,
-              mimeType: opts.mimeType,
-            },
-          },
-          { text: prompt },
-        ],
-      },
-    ],
-    config: { temperature: 0.1 },
-  })
-
-  return (resp.text || "").trim()
 }
 
 function computeAutoTags(opts: { kind: string; text: string }) {
@@ -251,12 +246,31 @@ export async function POST(request: Request) {
     const bytes = new Uint8Array(await r.arrayBuffer())
 
     let pages: string[] = []
+    const ocrLanguage = "hi-IN"
 
     if (row.mimeType.includes("pdf")) {
-      pages = await extractPdfPagesText(bytes)
+      try {
+        pages = await extractPdfPagesText(bytes)
+        const meaningfulPdfText = pages.join(" ").replace(/\s+/g, " ").trim()
+
+        if (meaningfulPdfText.length < 20) {
+          throw new Error("PDF appears scanned (no embedded text)")
+        }
+      } catch {
+        const extracted = await extractTextWithSarvamOcr({
+          bytes,
+          mimeType: "application/pdf",
+          language: ocrLanguage,
+        })
+        pages = [extracted]
+      }
     } else if (row.mimeType.startsWith("image/")) {
-      const base64 = Buffer.from(bytes).toString("base64")
-      pages = [await extractTextFromImage({ base64, mimeType: row.mimeType })]
+      const extracted = await extractTextWithSarvamOcr({
+        bytes,
+        mimeType: row.mimeType,
+        language: ocrLanguage,
+      })
+      pages = [extracted]
     } else if (row.mimeType === "text/plain") {
       pages = [new TextDecoder().decode(bytes)]
     } else {

@@ -20,13 +20,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
-          <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <header className="sticky top-0 z-10 flex h-10 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <SidebarTrigger />
             <Separator orientation="vertical" className="h-6" />
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{t("title")}</div>
               <div className="truncate text-xs text-muted-foreground">
-                {t("subtitle")}
+                {/* {t("subtitle")} */}
               </div>
             </div>
           </header>

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { GoogleGenAI } from "@google/genai"
 import { SarvamAIClient } from "sarvamai"
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+import { extractTextWithSarvamDocumentIntelligence } from "@/lib/ai/sarvam-document-intelligence"
+
 const client = new SarvamAIClient({
   apiSubscriptionKey: process.env.SARVAM_API_KEY,
 })
@@ -30,6 +30,92 @@ function resolveTargetLanguage(input: string): TranslateTargetLanguage {
 
 export const maxDuration = 60 // Allow 60 seconds
 
+function splitIntoChunks(text: string, maxChars: number): string[] {
+  const cleaned = text.replace(/\r/g, "").trim()
+  if (!cleaned) return []
+
+  const paragraphs = cleaned
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+
+  const chunks: string[] = []
+  let buf = ""
+
+  function flush() {
+    const out = buf.trim()
+    if (out) chunks.push(out)
+    buf = ""
+  }
+
+  for (const p of paragraphs) {
+    const next = buf ? `${buf}\n\n${p}` : p
+
+    if (next.length <= maxChars) {
+      buf = next
+      continue
+    }
+
+    if (!buf) {
+      const parts = p.split(/(?<=[.!?।])\s+/)
+      let local = ""
+      for (const part of parts) {
+        const candidate = local ? `${local} ${part}` : part
+        if (candidate.length <= maxChars) {
+          local = candidate
+        } else {
+          if (local) chunks.push(local.trim())
+          local = part
+        }
+      }
+      if (local.trim()) chunks.push(local.trim())
+      continue
+    }
+
+    flush()
+    buf = p
+  }
+
+  flush()
+  return chunks
+}
+
+async function translateTextWithSarvam(opts: {
+  text: string
+  targetLanguage: TranslateTargetLanguage
+}): Promise<string> {
+  const MAX_CHARS = 950
+
+  function hardSplit(text: string) {
+    const out: string[] = []
+    for (let i = 0; i < text.length; i += MAX_CHARS) {
+      out.push(text.slice(i, i + MAX_CHARS))
+    }
+    return out
+  }
+
+  const parts = splitIntoChunks(opts.text, MAX_CHARS)
+    .flatMap((p) => (p.length > MAX_CHARS ? hardSplit(p) : [p]))
+    .map((p) => p.trim())
+    .filter(Boolean)
+
+  const translatedParts: string[] = []
+
+  for (const part of parts.length ? parts : [opts.text]) {
+    const r = await client.text.translate({
+      input: part,
+      source_language_code: "auto",
+      target_language_code: opts.targetLanguage,
+      speaker_gender: "Male",
+    })
+
+    const t = (r.translated_text || "").trim()
+    if (t) translatedParts.push(t)
+  }
+
+  return translatedParts.join("\n\n").trim()
+}
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
@@ -45,47 +131,34 @@ export async function POST(req: NextRequest) {
 
     const targetLanguage = resolveTargetLanguage(targetLanguageValue)
 
-    // Convert file to base64
-    const buffer = await file.arrayBuffer()
-    const base64String = Buffer.from(buffer).toString("base64")
+    const bytes = new Uint8Array(await file.arrayBuffer())
 
-    const prompt = `Please read the attached document carefully and extract all the text. Ignore formatting, just give me the raw plain text strictly in its original language. Do not translate it.`
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              inlineData: {
-                data: base64String,
-                mimeType: file.type,
-              },
-            },
-            { text: prompt },
-          ],
-        },
-      ],
-      config: {
-        temperature: 0.1,
-      },
-    })
-
-    const extractedText = response.text || ""
+    let extractedText = ""
+    if (file.type?.startsWith("text/")) {
+      extractedText = new TextDecoder().decode(bytes)
+    } else if (file.type?.includes("pdf") || file.type?.startsWith("image/")) {
+      extractedText = await extractTextWithSarvamDocumentIntelligence({
+        bytes,
+        mimeType: file.type,
+        language: targetLanguage,
+      })
+    } else {
+      // Best-effort: try Sarvam OCR anyway.
+      extractedText = await extractTextWithSarvamDocumentIntelligence({
+        bytes,
+        mimeType: file.type || "application/octet-stream",
+        language: targetLanguage,
+      })
+    }
 
     if (!extractedText.trim()) {
       throw new Error("Could not extract any text from the document.")
     }
 
-    const translationResponse = await client.text.translate({
-      input: extractedText,
-      source_language_code: "auto",
-      target_language_code: targetLanguage,
-      speaker_gender: "Male",
+    const translatedText = await translateTextWithSarvam({
+      text: extractedText,
+      targetLanguage,
     })
-
-    const translatedText = translationResponse.translated_text
 
     return NextResponse.json({ text: translatedText })
   } catch (error: any) {

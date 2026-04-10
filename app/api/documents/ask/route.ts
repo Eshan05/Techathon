@@ -102,7 +102,7 @@ export async function POST(request: Request) {
     .join("\n\n")
 
   const profile = resolveChatProfile({ profileId: "kisan-vakil" })
-  const model = getChatModel(profile)
+  const model = await getChatModel(profile)
 
   const prompt =
     "You are Kisan Vakil. Answer the farmer's question using ONLY the provided vault sources. " +

@@ -40,6 +40,9 @@ export async function GET(
   const status = await getTranslatorJobStatus(userId, jobId)
 
   if (!status) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[translator-jobs] Job not found", { userId, jobId })
+    }
     return NextResponse.json({ error: "Job not found" }, { status: 404 })
   }
 

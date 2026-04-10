@@ -125,7 +125,9 @@ export async function POST(
     JSON.stringify(lawContext),
   ].join("\n")
 
-  const model = getChatModel(resolveChatProfile({ profileId: "kisan-vakil" }))
+  const model = await getChatModel(
+    resolveChatProfile({ profileId: "kisan-vakil" })
+  )
 
   const result = await generateText({
     model,
