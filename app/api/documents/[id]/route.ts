@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth/auth"
 import { db } from "@/lib/db/db"
 import { documents } from "@/lib/db/schema"
 import { getDocumentJobStatus } from "@/lib/qstash/document-jobs"
+import { getDocumentOcrJobStatus } from "@/lib/qstash/document-ocr-jobs"
 
 export const runtime = "nodejs"
 
@@ -45,9 +46,12 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
-  const job = await getDocumentJobStatus(session.user.id, id)
+  const [job, ocrJob] = await Promise.all([
+    getDocumentJobStatus(session.user.id, id),
+    getDocumentOcrJobStatus(session.user.id, id),
+  ])
 
-  return NextResponse.json({ data: { ...row, job } })
+  return NextResponse.json({ data: { ...row, job, ocrJob } })
 }
 
 export async function PATCH(

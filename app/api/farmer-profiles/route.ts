@@ -3,6 +3,7 @@ import { z } from "zod"
 import { eq } from "drizzle-orm"
 
 import { auth } from "@/lib/auth/auth"
+import { ensureFarmerProfilesSchema } from "@/lib/db/compat"
 import { db } from "@/lib/db/db"
 import { farmerProfiles } from "@/lib/db/schema"
 
@@ -68,6 +69,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  await ensureFarmerProfilesSchema()
+
   const row = await db.query.farmerProfiles.findFirst({
     where: eq(farmerProfiles.userId, session.user.id),
   })
@@ -80,6 +83,8 @@ export async function PUT(request: Request) {
   if (!session?.session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+
+  await ensureFarmerProfilesSchema()
 
   const body = await request.json().catch(() => null)
   const parsed = upsertFarmerProfileSchema.safeParse(body)

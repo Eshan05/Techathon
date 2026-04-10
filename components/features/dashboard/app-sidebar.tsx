@@ -83,12 +83,6 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton disabled>
-                  <BookOpenText />
-                  <span>{tSidebar("landRecords")}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <Link href="/dashboard/vault">
                     <FileText />

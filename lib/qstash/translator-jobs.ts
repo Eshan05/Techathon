@@ -30,6 +30,15 @@ export type TranslatorChunk = {
   text: string
 }
 
+export type TranslatorInsight = {
+  normal: string[]
+  redFlags: string[]
+  warnings: string[]
+  clarify: string[]
+  contextualBad: string[]
+  raw?: string
+}
+
 export type TranslatorJobStatus = {
   state: TranslatorJobState
   stage: TranslatorJobStage
@@ -40,6 +49,13 @@ export type TranslatorJobStatus = {
   mimeType: string
   targetLanguage: string
   stateCode?: string
+  farmerContext?: {
+    supportNeed?: string | null
+    state?: string | null
+    district?: string | null
+    tehsil?: string | null
+    village?: string | null
+  }
 
   totalChunks: number
   translatedChunks: number
@@ -162,12 +178,14 @@ export async function setTranslatorJobInsightChunk(
   userId: string,
   jobId: string,
   index: number,
-  markdown: string
+  insight: TranslatorInsight
 ) {
   const redis = getUpstashRedis()
   if (!redis) return
 
-  await redis.set(insKey(userId, jobId, index), markdown, { ex: TTL_SECONDS })
+  await redis.set(insKey(userId, jobId, index), JSON.stringify(insight), {
+    ex: TTL_SECONDS,
+  })
 }
 
 export async function getTranslatorJobInsightChunk(
@@ -179,7 +197,34 @@ export async function getTranslatorJobInsightChunk(
   if (!redis) return null
 
   const raw = await redis.get<string>(insKey(userId, jobId, index))
-  return typeof raw === "string" ? raw : null
+  if (!raw || typeof raw !== "string") return null
+
+  try {
+    const parsed = JSON.parse(raw) as TranslatorInsight
+    const fallback = {
+      normal: [],
+      redFlags: [],
+      warnings: [],
+      clarify: [],
+      contextualBad: [],
+    }
+
+    return {
+      ...fallback,
+      ...parsed,
+      raw: typeof parsed?.raw === "string" ? parsed.raw : undefined,
+    }
+  } catch {
+    // Backwards compat: older jobs stored markdown strings.
+    return {
+      normal: [],
+      redFlags: [],
+      warnings: [],
+      clarify: [],
+      contextualBad: [],
+      raw,
+    }
+  }
 }
 
 export async function getTranslatorJobChunksAfter(opts: {
@@ -226,10 +271,37 @@ export async function getTranslatorJobChunksAfter(opts: {
     }
   }
 
-  const insights: Array<{ index: number; markdown: string }> = []
+  const insights: Array<{ index: number; insight: TranslatorInsight }> = []
   for (const [i, raw] of insRaw) {
-    if (typeof raw === "string" && raw.trim()) {
-      insights.push({ index: i, markdown: raw })
+    if (typeof raw !== "string" || !raw.trim()) continue
+
+    try {
+      const parsed = JSON.parse(raw) as TranslatorInsight
+      insights.push({
+        index: i,
+        insight: {
+          normal: Array.isArray(parsed?.normal) ? parsed.normal : [],
+          redFlags: Array.isArray(parsed?.redFlags) ? parsed.redFlags : [],
+          warnings: Array.isArray(parsed?.warnings) ? parsed.warnings : [],
+          clarify: Array.isArray(parsed?.clarify) ? parsed.clarify : [],
+          contextualBad: Array.isArray(parsed?.contextualBad)
+            ? parsed.contextualBad
+            : [],
+          raw: typeof parsed?.raw === "string" ? parsed.raw : undefined,
+        },
+      })
+    } catch {
+      insights.push({
+        index: i,
+        insight: {
+          normal: [],
+          redFlags: [],
+          warnings: [],
+          clarify: [],
+          contextualBad: [],
+          raw,
+        },
+      })
     }
   }
 

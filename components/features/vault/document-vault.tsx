@@ -7,10 +7,13 @@ import {
   FolderOpen,
   Link2,
   Loader2,
+  Mic,
+  MoreVertical,
   Pencil,
+  ScanText,
   Trash2,
 } from "lucide-react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import {
@@ -38,6 +41,15 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Textarea } from "@/components/ui/textarea"
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -58,8 +70,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { TTSPlayer } from "@/components/features/translator/tts-player"
 
 import type { DocumentJobStatus } from "@/lib/qstash/types"
+import type { DocumentOcrJobStatus } from "@/lib/qstash/document-ocr-jobs"
 import {
   docKindToMasterCategory,
   MASTER_CATEGORIES,
@@ -76,10 +90,16 @@ type DocumentRow = {
   mimeType: string | null
   sizeBytes: number | null
   sha256: string | null
+
+  ocrExtractedAt: string | null
+  ocrCharCount: number | null
+  autoTagsJson: string | null
+
   landParcelId: string | null
   issuedAt: string | null
   createdAt: string
   job?: DocumentJobStatus | null
+  ocrJob?: DocumentOcrJobStatus | null
 }
 
 type LandParcelRow = {
@@ -129,6 +149,21 @@ function isRetryableUploadError(e: unknown) {
 
   const msg = e instanceof Error ? e.message : String(e ?? "")
   return /fetch|network|timeout|econn|socket|503|502|504/i.test(msg)
+}
+
+function safeStringArrayJson(value: string | null | undefined) {
+  if (!value) return [] as string[]
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .filter((x) => typeof x === "string")
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .slice(0, 6)
+  } catch {
+    return []
+  }
 }
 
 async function fetchDocuments(): Promise<DocumentRow[]> {
@@ -189,6 +224,19 @@ async function scheduleDocumentProcessing(
   return job
 }
 
+async function scheduleDocumentOcr(id: string): Promise<DocumentOcrJobStatus> {
+  const r = await fetch(`/api/documents/${id}/ocr`, {
+    method: "POST",
+    credentials: "same-origin",
+  })
+  const json = await r.json().catch(() => null)
+  if (!r.ok) throw new Error(json?.error ?? "Failed to start OCR")
+
+  const job = (json?.data?.job ?? null) as DocumentOcrJobStatus | null
+  if (!job) throw new Error("No job returned")
+  return job
+}
+
 function parcelLabel(p: LandParcelRow) {
   const bits = [p.nickname, p.village, p.tehsil, p.district, p.state]
     .map((x) => x?.trim())
@@ -217,6 +265,24 @@ export function DocumentVault() {
   const [isUploading, setIsUploading] = React.useState(false)
 
   const [schedulingId, setSchedulingId] = React.useState<string | null>(null)
+  const [ocrSchedulingId, setOcrSchedulingId] = React.useState<string | null>(
+    null
+  )
+
+  const [voiceOpen, setVoiceOpen] = React.useState(false)
+  const [voiceDocumentId, setVoiceDocumentId] = React.useState<string | null>(
+    null
+  )
+  const [voiceLanguage, setVoiceLanguage] = React.useState<string>("hi-IN")
+  const [voiceQuery, setVoiceQuery] = React.useState("")
+  const [voiceAnswer, setVoiceAnswer] = React.useState("")
+  const [voiceSources, setVoiceSources] = React.useState<
+    Array<{ title: string; pageNumber: number; chunkIndex: number }>
+  >([])
+
+  const recognitionRef = React.useRef<any>(null)
+  const [isListening, setIsListening] = React.useState(false)
+  const [hasSpeech, setHasSpeech] = React.useState(false)
 
   const {
     data: docs,
@@ -230,6 +296,45 @@ export function DocumentVault() {
   const { data: parcels } = useQuery({
     queryKey: ["land-parcels"],
     queryFn: fetchLandParcels,
+  })
+
+  const askMutation = useMutation({
+    mutationFn: async (input: {
+      query: string
+      documentId?: string
+      language: string
+    }) => {
+      const r = await fetch("/api/documents/ask", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: input.query,
+          documentId: input.documentId,
+          language: input.language,
+        }),
+      })
+
+      const json = await r.json().catch(() => null)
+      if (!r.ok) throw new Error(json?.error ?? "Could not ask vault")
+
+      return json?.data as {
+        answer: string
+        sources: Array<{
+          title: string
+          pageNumber: number
+          chunkIndex: number
+        }>
+      }
+    },
+    onSuccess: (data) => {
+      setVoiceAnswer(data.answer || "")
+      setVoiceSources(Array.isArray(data.sources) ? data.sources : [])
+    },
+    onError: (e) => {
+      const msg = e instanceof Error ? e.message : "Could not ask vault"
+      toast.error(msg)
+    },
   })
 
   const categoryCounts = React.useMemo(() => {
@@ -267,6 +372,16 @@ export function DocumentVault() {
     return (docs ?? []).find((d) => d.id === selectedId) ?? null
   }, [docs, selectedId])
 
+  const selectedTags = React.useMemo(
+    () => safeStringArrayJson(selected?.autoTagsJson),
+    [selected?.autoTagsJson]
+  )
+
+  const voiceDoc = React.useMemo(() => {
+    if (!voiceDocumentId) return null
+    return (docs ?? []).find((d) => d.id === voiceDocumentId) ?? null
+  }, [docs, voiceDocumentId])
+
   React.useEffect(() => {
     if (!selectedId && filtered.length) setSelectedId(filtered[0].id)
   }, [filtered, selectedId])
@@ -277,6 +392,56 @@ export function DocumentVault() {
       toast.error("Failed to load your vault")
     }
   }, [error])
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const SR =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition
+
+    if (!SR) {
+      setHasSpeech(false)
+      return
+    }
+
+    const rec = new SR()
+    rec.lang = voiceLanguage
+    rec.interimResults = true
+    rec.continuous = false
+
+    rec.onresult = (event: any) => {
+      try {
+        const transcript = Array.from(event.results || [])
+          .map((r: any) => r?.[0]?.transcript ?? "")
+          .join("")
+          .trim()
+
+        if (transcript) setVoiceQuery(transcript)
+      } catch {
+        // no-op
+      }
+    }
+
+    rec.onerror = () => setIsListening(false)
+    rec.onend = () => setIsListening(false)
+
+    recognitionRef.current = rec
+    setHasSpeech(true)
+
+    return () => {
+      try {
+        rec.onresult = null
+        rec.onerror = null
+        rec.onend = null
+        rec.stop?.()
+      } catch {
+        // no-op
+      }
+      recognitionRef.current = null
+      setHasSpeech(false)
+    }
+  }, [voiceLanguage])
 
   const handleDrop = React.useCallback((accepted: File[]) => {
     const next = accepted?.[0] ?? null
@@ -408,6 +573,89 @@ export function DocumentVault() {
     },
     [qc]
   )
+
+  const startOcr = React.useCallback(
+    async (documentId: string) => {
+      const toastId = toast.loading("Starting OCR…")
+      setOcrSchedulingId(documentId)
+
+      qc.setQueryData<DocumentRow[]>(["documents"], (prev) => {
+        const list = Array.isArray(prev) ? prev : []
+        return list.map((d) =>
+          d.id === documentId
+            ? {
+                ...d,
+                ocrJob: {
+                  state: "queued",
+                  updatedAt: Date.now(),
+                },
+              }
+            : d
+        )
+      })
+
+      try {
+        const job = await scheduleDocumentOcr(documentId)
+        qc.setQueryData<DocumentRow[]>(["documents"], (prev) => {
+          const list = Array.isArray(prev) ? prev : []
+          return list.map((d) =>
+            d.id === documentId ? { ...d, ocrJob: job } : d
+          )
+        })
+        toast.success("Queued for OCR", { id: toastId })
+      } catch (e) {
+        console.error(e)
+        toast.error(e instanceof Error ? e.message : "Could not queue OCR", {
+          id: toastId,
+        })
+        await qc.invalidateQueries({ queryKey: ["documents"] })
+      } finally {
+        setOcrSchedulingId(null)
+      }
+    },
+    [qc]
+  )
+
+  const openVoice = React.useCallback((documentId: string | null) => {
+    setVoiceDocumentId(documentId)
+    setVoiceQuery("")
+    setVoiceAnswer("")
+    setVoiceSources([])
+    setVoiceOpen(true)
+  }, [])
+
+  const toggleListening = React.useCallback(() => {
+    const rec = recognitionRef.current
+    if (!rec) {
+      toast.error("Voice input isn’t available on this browser.")
+      return
+    }
+
+    try {
+      if (isListening) {
+        rec.stop?.()
+        setIsListening(false)
+        return
+      }
+
+      rec.lang = voiceLanguage
+      setIsListening(true)
+      rec.start?.()
+    } catch {
+      setIsListening(false)
+    }
+  }, [isListening, voiceLanguage])
+
+  const submitAsk = React.useCallback(() => {
+    const q = voiceQuery.trim()
+    if (!q) return toast.error("Ask a question first")
+
+    askMutation.mutate({
+      query: q,
+      documentId: voiceDocumentId ?? undefined,
+      language: voiceLanguage,
+    })
+  }, [askMutation, voiceDocumentId, voiceLanguage, voiceQuery])
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -739,6 +987,27 @@ export function DocumentVault() {
                                 Needs retry
                               </span>
                             ) : null}
+
+                            {d.ocrExtractedAt ? (
+                              <span className="rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
+                                Searchable
+                              </span>
+                            ) : d.ocrJob?.state === "queued" ? (
+                              <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
+                                OCR queued
+                              </span>
+                            ) : d.ocrJob?.state === "extracting" ||
+                              d.ocrJob?.state === "chunking" ||
+                              d.ocrJob?.state === "saving" ? (
+                              <span className="inline-flex items-center gap-1 rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
+                                <Loader2 className="size-3 animate-spin" />
+                                OCR
+                              </span>
+                            ) : d.ocrJob?.state === "failed" ? (
+                              <span className="rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
+                                OCR retry
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -798,6 +1067,37 @@ export function DocumentVault() {
                           Needs retry
                         </span>
                       ) : null}
+
+                      {selected.ocrExtractedAt ? (
+                        <span className="rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
+                          Searchable
+                        </span>
+                      ) : selected.ocrJob?.state === "queued" ? (
+                        <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
+                          OCR queued
+                        </span>
+                      ) : selected.ocrJob?.state === "extracting" ||
+                        selected.ocrJob?.state === "chunking" ||
+                        selected.ocrJob?.state === "saving" ? (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
+                          <Loader2 className="size-3 animate-spin" />
+                          OCR
+                        </span>
+                      ) : selected.ocrJob?.state === "failed" ? (
+                        <span className="rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
+                          OCR retry
+                        </span>
+                      ) : null}
+
+                      {selectedTags.map((t) => (
+                        <Badge
+                          key={t}
+                          variant="secondary"
+                          className="h-5 px-1.5 text-[11px]"
+                        >
+                          {t}
+                        </Badge>
+                      ))}
                     </>
                   ) : (
                     ""
@@ -819,6 +1119,46 @@ export function DocumentVault() {
                       </a>
                     </Button>
                   ) : null}
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="secondary"
+                        className="w-full justify-center gap-2 sm:w-auto"
+                      >
+                        <MoreVertical className="size-4" />
+                        Actions
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64">
+                      <DropdownMenuLabel>Document tools</DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          startOcr(selected.id)
+                        }}
+                      >
+                        <ScanText className="size-4" />
+                        {selected.ocrExtractedAt ? "Re-run OCR" : "Perform OCR"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          openVoice(selected.id)
+                        }}
+                      >
+                        <Mic className="size-4" />
+                        Voice mode (this document)
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          openVoice(null)
+                        }}
+                      >
+                        <FolderOpen className="size-4" />
+                        Ask across vault
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
                   <EditDocumentDialog
                     doc={selected}
@@ -931,6 +1271,42 @@ export function DocumentVault() {
                   </div>
 
                   <div className="flex items-center justify-between gap-3">
+                    <span className="text-muted-foreground">OCR</span>
+                    <span className="flex items-center gap-2">
+                      {selected.ocrExtractedAt ? (
+                        <span className="rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-xs text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
+                          Searchable
+                        </span>
+                      ) : selected.ocrJob?.state === "queued" ? (
+                        <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
+                          OCR queued
+                        </span>
+                      ) : selected.ocrJob?.state === "extracting" ||
+                        selected.ocrJob?.state === "chunking" ||
+                        selected.ocrJob?.state === "saving" ? (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-xs text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
+                          <Loader2 className="size-3 animate-spin" />
+                          OCR
+                        </span>
+                      ) : selected.ocrJob?.state === "failed" ? (
+                        <span className="rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-xs text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
+                          OCR failed
+                        </span>
+                      ) : (
+                        <span className="rounded-md border px-1.5 py-0.5 text-xs">
+                          Not started
+                        </span>
+                      )}
+                      {selected.ocrCharCount ? (
+                        <span className="text-xs text-muted-foreground">
+                          {Intl.NumberFormat().format(selected.ocrCharCount)}{" "}
+                          chars
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
                     <span className="text-muted-foreground">Uploaded</span>
                     <span>
                       {selected.createdAt
@@ -964,6 +1340,23 @@ export function DocumentVault() {
                       : "Verify now"}
                   </Button>
                 )}
+
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  disabled={
+                    ocrSchedulingId === selected.id ||
+                    selected.ocrJob?.state === "extracting" ||
+                    selected.ocrJob?.state === "chunking" ||
+                    selected.ocrJob?.state === "saving"
+                  }
+                  onClick={() => startOcr(selected.id)}
+                >
+                  <ScanText className="size-4" />
+                  {selected.ocrExtractedAt
+                    ? "Re-run OCR"
+                    : "Make searchable (OCR)"}
+                </Button>
 
                 <div className="rounded-lg border bg-muted/30 p-3">
                   <div className="text-xs text-muted-foreground">Trust tip</div>
@@ -1007,6 +1400,187 @@ export function DocumentVault() {
                   No URL found.
                 </div>
               )}
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      <Drawer
+        open={voiceOpen}
+        onOpenChange={(next) => {
+          setVoiceOpen(next)
+          if (!next) {
+            try {
+              recognitionRef.current?.stop?.()
+            } catch {
+              // no-op
+            }
+            setIsListening(false)
+          }
+        }}
+      >
+        <DrawerContent>
+          <div className="mx-auto w-full max-w-3xl p-4 sm:p-6">
+            <DrawerHeader className="p-0">
+              <DrawerTitle>Voice mode</DrawerTitle>
+              <DrawerDescription>
+                Ask questions in your language. Answers are grounded in OCR
+                text.
+              </DrawerDescription>
+            </DrawerHeader>
+
+            <div className="mt-4 grid gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary" className="w-fit">
+                  Scope: {voiceDocumentId ? "This document" : "All documents"}
+                </Badge>
+                {voiceDocumentId ? (
+                  <Badge variant="outline" className="w-fit">
+                    {voiceDoc?.title ?? voiceDocumentId}
+                  </Badge>
+                ) : null}
+              </div>
+
+              <div className="rounded-xl border bg-background p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="text-xs font-medium text-muted-foreground">
+                      Your question
+                    </div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      Tip: ask “What should I be careful about before signing?”
+                    </div>
+                  </div>
+
+                  <Select
+                    value={voiceLanguage}
+                    onValueChange={setVoiceLanguage}
+                  >
+                    <SelectTrigger className="h-8 w-full sm:w-[180px]">
+                      <SelectValue placeholder="Language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hi-IN">Hindi</SelectItem>
+                      <SelectItem value="en-IN">English</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="mt-3 flex items-stretch gap-2">
+                  <Textarea
+                    value={voiceQuery}
+                    onChange={(e) => setVoiceQuery(e.target.value)}
+                    placeholder="Ask about clauses, payments, tenancy, mutation, deadlines…"
+                    className="min-h-20"
+                  />
+
+                  <Button
+                    type="button"
+                    variant={isListening ? "default" : "secondary"}
+                    className="w-12 shrink-0"
+                    disabled={!hasSpeech || askMutation.isPending}
+                    onClick={toggleListening}
+                    title={
+                      hasSpeech
+                        ? isListening
+                          ? "Stop"
+                          : "Speak"
+                        : "Voice input not supported"
+                    }
+                  >
+                    <Mic className="size-4" />
+                  </Button>
+                </div>
+
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {hasSpeech
+                    ? isListening
+                      ? "Listening… speak now"
+                      : "Tap the mic to speak"
+                    : "Voice input not available on this browser. Type instead."}
+                </div>
+
+                {voiceDocumentId && voiceDoc && !voiceDoc.ocrExtractedAt ? (
+                  <div className="mt-3 rounded-lg border bg-muted/20 p-3 text-sm">
+                    <div className="text-xs font-medium">OCR needed</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Run OCR once to make this document searchable for Q&A.
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="mt-2 w-full gap-2"
+                      onClick={() => startOcr(voiceDoc.id)}
+                      disabled={
+                        ocrSchedulingId === voiceDoc.id ||
+                        voiceDoc.ocrJob?.state === "extracting" ||
+                        voiceDoc.ocrJob?.state === "chunking" ||
+                        voiceDoc.ocrJob?.state === "saving"
+                      }
+                    >
+                      <ScanText className="size-4" />
+                      Make searchable (OCR)
+                    </Button>
+                  </div>
+                ) : null}
+
+                <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    onClick={submitAsk}
+                    disabled={askMutation.isPending}
+                    className="w-full gap-2 sm:w-auto"
+                  >
+                    {askMutation.isPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : null}
+                    Ask
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-xl border bg-muted/10 p-3">
+                <div className="text-xs font-medium">Answer</div>
+                {askMutation.isPending ? (
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    Thinking…
+                  </div>
+                ) : voiceAnswer ? (
+                  <div className="mt-2 text-sm whitespace-pre-wrap">
+                    {voiceAnswer}
+                  </div>
+                ) : (
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    Ask a question to get a grounded answer.
+                  </div>
+                )}
+
+                {voiceSources.length ? (
+                  <div className="mt-3">
+                    <div className="text-xs font-medium text-muted-foreground">
+                      Citations
+                    </div>
+                    <ul className="mt-1 list-disc pl-5 text-xs text-muted-foreground">
+                      {voiceSources.map((s, idx) => (
+                        <li key={`${s.chunkIndex}-${idx}`}>
+                          {s.title} — page {s.pageNumber} (chunk {s.chunkIndex})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+
+              {voiceAnswer ? (
+                <div className="rounded-xl border bg-background p-3">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    Read aloud
+                  </div>
+                  <div className="mt-2">
+                    <TTSPlayer text={voiceAnswer} language={voiceLanguage} />
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </DrawerContent>

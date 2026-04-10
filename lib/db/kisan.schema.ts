@@ -88,6 +88,10 @@ export const documents = sqliteTable(
     sizeBytes: integer("size_bytes"),
     sha256: text("sha256"),
 
+    ocrExtractedAt: integer("ocr_extracted_at", { mode: "timestamp_ms" }),
+    ocrCharCount: integer("ocr_char_count"),
+    autoTagsJson: text("auto_tags_json"),
+
     landParcelId: text("land_parcel_id").references(() => landParcels.id, {
       onDelete: "set null",
     }),
@@ -101,6 +105,40 @@ export const documents = sqliteTable(
   (table) => [
     index("documents_userId_idx").on(table.userId),
     index("documents_landParcelId_idx").on(table.landParcelId),
+  ]
+)
+
+export const documentOcrChunks = sqliteTable(
+  "document_ocr_chunks",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    documentId: text("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+
+    chunkIndex: integer("chunk_index").notNull(),
+    pageNumber: integer("page_number").notNull(),
+    partNumber: integer("part_number").notNull(),
+    partCount: integer("part_count").notNull(),
+
+    text: text("text").notNull(),
+
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [
+    index("document_ocr_chunks_userId_idx").on(table.userId),
+    index("document_ocr_chunks_documentId_idx").on(table.documentId),
+    index("document_ocr_chunks_doc_chunk_idx").on(
+      table.documentId,
+      table.chunkIndex
+    ),
   ]
 )
 
@@ -119,7 +157,7 @@ export const landParcelsRelations = relations(landParcels, ({ one, many }) => ({
   documents: many(documents),
 }))
 
-export const documentsRelations = relations(documents, ({ one }) => ({
+export const documentsRelations = relations(documents, ({ one, many }) => ({
   user: one(users, {
     fields: [documents.userId],
     references: [users.id],
@@ -128,4 +166,19 @@ export const documentsRelations = relations(documents, ({ one }) => ({
     fields: [documents.landParcelId],
     references: [landParcels.id],
   }),
+  ocrChunks: many(documentOcrChunks),
 }))
+
+export const documentOcrChunksRelations = relations(
+  documentOcrChunks,
+  ({ one }) => ({
+    document: one(documents, {
+      fields: [documentOcrChunks.documentId],
+      references: [documents.id],
+    }),
+    user: one(users, {
+      fields: [documentOcrChunks.userId],
+      references: [users.id],
+    }),
+  })
+)

@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth/auth"
 import { db } from "@/lib/db/db"
 import { documents } from "@/lib/db/schema"
 import { getDocumentJobStatuses } from "@/lib/qstash/document-jobs"
+import { getDocumentOcrJobStatuses } from "@/lib/qstash/document-ocr-jobs"
 
 export const runtime = "nodejs"
 
@@ -37,14 +38,17 @@ export async function GET(request: Request) {
     orderBy: (t, { desc }) => [desc(t.createdAt)],
   })
 
-  const jobMap = await getDocumentJobStatuses(
-    session.user.id,
-    rows.map((r) => r.id)
-  )
+  const ids = rows.map((r) => r.id)
+
+  const [jobMap, ocrJobMap] = await Promise.all([
+    getDocumentJobStatuses(session.user.id, ids),
+    getDocumentOcrJobStatuses(session.user.id, ids),
+  ])
 
   const withJobs = rows.map((r) => ({
     ...r,
     job: jobMap[r.id] ?? null,
+    ocrJob: ocrJobMap[r.id] ?? null,
   }))
 
   return NextResponse.json({ data: withJobs })
