@@ -1,0 +1,140 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-serif: "DM Serif Display", serif;
+  --font-hand: "Patrick Hand", cursive;
+  --font-sans: "Geist", "Geist Sans", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --breakpoint-xs: 30rem;
+
+  --width-xs: 20rem;
+
+  --text-2xs: 0.7rem;
+  --text-tiny: 0.625rem;
+
+  --animate-marquee: marquee var(--duration) linear infinite;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+
+  @keyframes marquee-vertical {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(calc(-100% - var(--gap)));
+    }
+  }
+}
+
+@theme inline {
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+}
+
+:root {
+    --background: oklch(0.97 0.015 65);
+    --foreground: oklch(0.2 0.05 35);
+    --card: oklch(0.98 0.01 70);
+    --card-foreground: oklch(0.2 0.05 35);
+    --popover: oklch(0.98 0.01 70);
+    --popover-foreground: oklch(0.2 0.05 35);
+    --primary: oklch(0.45 0.12 145);
+    --primary-foreground: oklch(0.98 0.01 70);
+    --secondary: oklch(0.6 0.18 55);
+    --secondary-foreground: oklch(0.98 0.01 70);
+    --muted: oklch(0.92 0.02 65);
+    --muted-foreground: oklch(0.4 0.05 35);
+    --accent: oklch(0.88 0.15 90);
+    --accent-foreground: oklch(0.25 0.05 35);
+    --destructive: oklch(0.5 0.22 30);
+    --border: oklch(0.85 0.02 50);
+    --input: oklch(0.85 0.02 50);
+    --ring: oklch(0.45 0.12 145);
+    --radius: 1rem;
+}
+
+.dark {
+    --background: oklch(0.12 0.02 30);
+    --foreground: oklch(0.95 0.02 65);
+    --card: oklch(0.16 0.02 30);
+    --card-foreground: oklch(0.95 0.02 65);
+    --popover: oklch(0.16 0.02 30);
+    --popover-foreground: oklch(0.95 0.02 65);
+    --primary: oklch(0.72 0.12 145);
+    --primary-foreground: oklch(0.1 0.02 30);
+    --secondary: oklch(0.5 0.15 55);
+    --secondary-foreground: oklch(0.98 0.01 65);
+    --muted: oklch(0.2 0.02 30);
+    --muted-foreground: oklch(0.7 0.02 65);
+    --accent: oklch(0.65 0.15 90);
+    --accent-foreground: oklch(0.12 0.05 35);
+    --border: oklch(0.25 0.04 35);
+    --input: oklch(0.25 0.04 35);
+    --ring: oklch(0.72 0.12 145);
+}
+
+@layer base {
+  * {
+    @apply border-border/40 outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground selection:bg-primary/20 transition-colors duration-500 overflow-x-hidden;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox=\"0 0 200 200\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cfilter id=\"noiseFilter\"%3E%3CfeTurbulence type=\"fractalNoise\" baseFrequency=\"0.65\" numOctaves=\"3\" stitchTiles=\"stitch\"/%3E%3C/filter%3E%3Crect width=\"100%\" height=\"100%\" filter=\"url(#noiseFilter)\" opacity=\"0.04\"/%3E%3C/svg%3E");
+  }
+}
+
+.wobbly {
+  border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+}
+
+.paper-shadow {
+  box-shadow: 0 10px 40px -10px oklch(0.2 0.05 35 / 0.15);
+}
+
+.font-hand {
+  font-family: "Patrick Hand", cursive;
+}
+
+.font-serif {
+  font-family: "DM Serif Display", serif;
+}
+
+.flex-center-1 {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.flex-center-2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

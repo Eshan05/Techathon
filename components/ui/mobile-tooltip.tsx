@@ -1,0 +1,70 @@
+'use client'
+
+import { Popover as PopoverPrimitive } from 'radix-ui'
+import { Tooltip as TooltipPrimitive } from 'radix-ui'
+
+import { createContext, useContext, useState } from 'react'
+import { Popover, PopoverContent, PopoverTrigger } from './popover'
+import {
+  Tooltip as OriginalTooltip,
+  TooltipContent as OriginalTooltipContent,
+  TooltipProvider as OriginalTooltipProvider,
+  TooltipTrigger as OriginalTooltipTrigger,
+} from './tooltip'
+
+const TouchContext = createContext<boolean | undefined>(undefined)
+const useTouch = () => useContext(TouchContext)
+
+export const TooltipProvider = ({
+  children,
+  ...props
+}: TooltipPrimitive.TooltipProviderProps) => {
+  const [isTouch] = useState<boolean | undefined>(() => {
+    if (typeof window === 'undefined') return undefined
+    return window.matchMedia('(pointer: coarse)').matches
+  })
+
+  return (
+    <TouchContext.Provider value={isTouch}>
+      <OriginalTooltipProvider {...props}>{children}</OriginalTooltipProvider>
+    </TouchContext.Provider>
+  )
+}
+
+export const Tooltip = (
+  props: TooltipPrimitive.TooltipProps & PopoverPrimitive.PopoverProps
+) => {
+  const isTouch = useTouch()
+  return isTouch ? <Popover {...props} /> : <OriginalTooltip {...props} />
+}
+
+export const TooltipTrigger = (
+  props: TooltipPrimitive.TooltipTriggerProps &
+    PopoverPrimitive.PopoverTriggerProps
+) => {
+  const isTouch = useTouch()
+  return isTouch ? (
+    <PopoverTrigger {...props} />
+  ) : (
+    <OriginalTooltipTrigger {...props} />
+  )
+}
+
+export const TooltipContent = (
+  props: TooltipPrimitive.TooltipContentProps &
+    PopoverPrimitive.PopoverContentProps
+) => {
+  const isTouch = useTouch()
+  const { children, ...restProps } = props
+  return isTouch ? (
+    <PopoverContent
+      className='w-max bg-primary border-none text-primary-foreground rounded-md px-3 py-1.5 text-xs text-balance'
+      {...restProps}
+    >
+      {children}
+      <PopoverPrimitive.Arrow className='bg-primary fill-primary z-50 size-2.5 translate-y-[calc(-50%-2px)] rotate-45 rounded-[2px]' />
+    </PopoverContent>
+  ) : (
+    <OriginalTooltipContent {...props} />
+  )
+}
