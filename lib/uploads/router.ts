@@ -139,6 +139,31 @@ export const uploadRouter = {
         },
       }
     }),
+
+  analyzerDocument: f({
+    image: { maxFileCount: 1, maxFileSize: "8MB" },
+    pdf: { maxFileCount: 1, maxFileSize: "16MB" },
+    text: { maxFileCount: 1, maxFileSize: "512KB" },
+  })
+    .middleware(async ({ req }) => {
+      const session = await auth.api.getSession({ headers: req.headers })
+      if (!session?.session) {
+        throw new UploadThingError("Unauthorized")
+      }
+
+      return {
+        userId: session.user.id,
+        uploadedAt: Date.now(),
+      }
+    })
+    .onUploadComplete(async ({ file, metadata }) => ({
+      key: file.key,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      uploadedAt: metadata.uploadedAt,
+      url: file.ufsUrl,
+    })),
 } satisfies FileRouter
 
 export type UploadRouter = typeof uploadRouter
