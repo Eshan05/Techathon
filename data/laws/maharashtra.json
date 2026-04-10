@@ -1,0 +1,532 @@
+[
+  {
+    "id": "mh-mlrc-1966",
+    "priority": 10,
+    "jurisdiction": { "country": "IN", "stateCode": "MH", "stateName": "Maharashtra" },
+    "kind": "act",
+    "status": "in-force",
+    "year": 1966,
+    "title": {
+      "en": "Maharashtra Land Revenue Code, 1966",
+      "hi": "महाराष्ट्र भूमि राजस्व संहिता, 1966",
+      "mr": "महाराष्ट्र जमीन महसूल संहिता, 1966"
+    },
+    "shortTitle": {
+      "en": "Land Revenue Code (MLRC)",
+      "hi": "भूमि राजस्व संहिता (MLRC)",
+      "mr": "जमीन महसूल संहिता (MLRC)"
+    },
+    "topics": ["land-records", "ownership", "mutation", "7-12", "survey"],
+    "keywords": {
+      "en": ["7/12", "satbara", "8a", "mutation", "record of rights", "na", "conversion", "talathi", "tehsildar", "measurement", "boundary"],
+      "hi": ["7/12", "सातबारा", "8A", "नामांतरण", "खातेदार", "रजिस्टर", "रिकॉर्ड", "सीमा", "नाप", "तलाठी", "तहसीलदार"],
+      "mr": ["7/12", "सातबारा", "8A", "नावांतरण", "खातेदार", "नोंद", "सीमा", "मोजणी", "तलाठी", "तहसीलदार"]
+    },
+    "plainLanguage": {
+      "en": {
+        "summary": "This is Maharashtra’s ‘master’ land administration law. It governs land records (7/12, 8A), mutations, surveys, boundaries, and many revenue-office procedures.",
+        "whenApplies": [
+          "When your 7/12 or 8A entry is wrong",
+          "When you need mutation (inheritance/sale/gift) recorded",
+          "When there is a boundary or survey dispute",
+          "When converting agricultural land to non-agricultural (NA) use"
+        ],
+        "keyPoints": [
+          "Land records are evidence of possession/entries, not a perfect ‘title deed’ by themselves.",
+          "Mutations update records after events like sale/inheritance; delays can create future disputes.",
+          "Survey/boundary processes have formal steps and notices—keep copies of everything.",
+          "Many applications start at the Talathi/Tehsildar level; escalation is possible." 
+        ],
+        "whatToDo": [
+          "Get a fresh 7/12 and 8A copy and verify names, area, land use, encumbrance notes.",
+          "If wrong: file a correction/mutation request with supporting documents.",
+          "If boundary dispute: request measurement/survey; attend spot inspection; record panchanama if done.",
+          "Keep a timeline of applications + receipts; follow up in writing, not only verbally."
+        ],
+        "requiredDocs": ["7/12 extract", "8A extract", "sale deed/gift deed/will (as applicable)", "death certificate (inheritance)", "ID proof", "application acknowledgement/receipt"],
+        "redFlags": [
+          "Being asked to sign blank papers or affidavits you can’t read",
+          "Someone promising ‘instant mutation’ without receipts or online tracking",
+          "7/12 shows ‘pending’ entries, disputes, or court stay—verify before paying/agreeing"
+        ],
+        "edgeCases": [
+          "Joint family land: ensure all legal heirs are handled in mutation",
+          "Errors due to spelling/alias differences: use supporting IDs and prior entries",
+          "Old survey numbers / consolidation changes: match old-new references carefully"
+        ],
+        "sideEffects": [
+          "If you delay mutation, later sale/loan can get blocked",
+          "Boundary disputes can escalate to civil litigation if not documented early"
+        ]
+      },
+      "hi": {
+        "summary": "यह महाराष्ट्र की ‘मुख्य’ भूमि-प्रशासन कानून है। 7/12, 8A, नामांतरण, नाप-जोख, सीमांकन और राजस्व कार्यालय की कई प्रक्रियाएँ इसी के तहत चलती हैं।",
+        "whenApplies": [
+          "जब 7/12 या 8A में गलती हो",
+          "जब बिक्री/उत्तराधिकार/दान के बाद नामांतरण कराना हो",
+          "जब सीमा/नाप को लेकर विवाद हो",
+          "जब खेती की जमीन को NA (गैर-कृषि) में बदलना हो"
+        ],
+        "keyPoints": [
+          "जमीन की प्रविष्टियाँ अक्सर ‘रिकॉर्ड’ होती हैं—यह अकेले पक्का टाइटल नहीं होती।",
+          "नामांतरण समय पर नहीं हुआ तो आगे चलकर बिक्री/लोन में अटकाव आ सकता है।",
+          "सीमा/सर्वे प्रक्रिया में नोटिस व रिकॉर्ड बहुत जरूरी हैं—हर कागज़ की कॉपी रखें।",
+          "अधिकांश काम तलाठी/तहसील स्तर से शुरू होता है; जरूरत पर ऊपर अपील/शिकायत हो सकती है।"
+        ],
+        "whatToDo": [
+          "नया 7/12 और 8A निकालकर नाम, क्षेत्रफल, जमीन का प्रकार, टिप्पणी/विवाद नोट देखें।",
+          "गलती हो तो सबूत के साथ सुधार/नामांतरण आवेदन दें।",
+          "सीमा विवाद में नाप-जोख/मोजणी की मांग करें और मौके पर मौजूद रहें।",
+          "हर आवेदन की रसीद/अक्नॉलेजमेंट रखें; लिखित फॉलो-अप करें।"
+        ],
+        "requiredDocs": ["7/12", "8A", "बिक्री विलेख/दान विलेख/वसीयत", "मृत्यु प्रमाणपत्र (उत्तराधिकार)", "पहचान पत्र", "आवेदन रसीद"],
+        "redFlags": [
+          "खाली कागज़/फॉर्म पर साइन कराने की कोशिश",
+          "रसीद बिना ‘तुरंत नामांतरण’ का वादा",
+          "7/12 में विवाद/कोर्ट स्टे/पेंडिंग एंट्री—जांच बिना पैसा/डील न करें"
+        ],
+        "edgeCases": [
+          "संयुक्त परिवार: सभी वारिस/हिस्सेदार ठीक से शामिल हों",
+          "नाम की स्पेलिंग/उपनाम का फर्क: पुराने रिकॉर्ड + ID से मिलान करें",
+          "पुराने सर्वे नंबर/कंसोलिडेशन: पुराने-नए नंबर का संदर्भ जरूर मिलाएँ"
+        ],
+        "sideEffects": [
+          "नामांतरण की देरी से बाद में बिक्री/लोन रुक सकता है",
+          "सीमा विवाद समय पर दस्तावेज़ न करने पर कोर्ट केस बन सकता है"
+        ]
+      },
+      "mr": {
+        "summary": "हा महाराष्ट्राचा ‘मुख्य’ जमीन-प्रशासन कायदा आहे. 7/12, 8A, नावांतरण, मोजणी, सीमांकन आणि महसूल कार्यालयातील अनेक प्रक्रिया यामध्ये येतात.",
+        "whenApplies": [
+          "7/12 किंवा 8A मध्ये चूक असल्यास",
+          "विक्री/वारसा/दानानंतर नावांतरण करायचे असल्यास",
+          "सीमा किंवा मोजणीबाबत वाद असल्यास",
+          "शेती जमीन NA (बिनशेती) मध्ये रूपांतर करायचे असल्यास"
+        ],
+        "keyPoints": [
+          "जमीन नोंदी ‘नोंद’ म्हणून पुरावा असतात—फक्त त्यावरून पूर्ण टायटल ठरत नाही.",
+          "नावांतरण उशिरा झाल्यास पुढे विक्री/कर्ज प्रक्रियेत अडचण येऊ शकते.",
+          "सीमा/सर्वे प्रक्रियेत नोटीस व कागदपत्रे महत्त्वाची—सर्व प्रती जपून ठेवा.",
+          "बहुतेक काम तलाठी/तहसीलदार पातळीवर सुरू होते; गरज पडल्यास वर अपील शक्य."
+        ],
+        "whatToDo": [
+          "नवीन 7/12 आणि 8A काढून नाव, क्षेत्र, जमीन प्रकार, टीपा तपासा.",
+          "चूक असल्यास पुराव्यासह दुरुस्ती/नावांतरण अर्ज करा.",
+          "सीमा वादात मोजणीची मागणी करा आणि ठिकाणी हजर राहा.",
+          "प्रत्येक अर्जाची पोच/पावती ठेवा; लेखी फॉलो-अप करा."
+        ],
+        "requiredDocs": ["7/12 उतारा", "8A उतारा", "विक्री/दान दस्तऐवज/वसीयत", "मृत्यू प्रमाणपत्र (वारसा)", "ओळखपत्र", "अर्जाची पावती"],
+        "redFlags": [
+          "कोरे कागद/फॉर्मवर सही मागणे",
+          "पावतीशिवाय ‘ताबडतोब नावांतरण’चे आश्वासन",
+          "7/12 मध्ये वाद/कोर्ट स्टे/पेंडिंग नोंद—तपासणीशिवाय व्यवहार करू नका"
+        ],
+        "edgeCases": [
+          "संयुक्त कुटुंब: सर्व वारस/हिस्सेदार योग्यरीत्या समाविष्ट करा",
+          "नावातील स्पेलिंग/उपनाव फरक: जुने रेकॉर्ड + ID वापरून जुळवा",
+          "जुने सर्वे नंबर/कंसोलिडेशन: जुना-नवा संदर्भ नीट तपासा"
+        ],
+        "sideEffects": [
+          "नावांतरण उशिरा झाल्यास विक्री/कर्ज थांबू शकते",
+          "सीमा वाद लवकर नोंदवला नाही तर केस होऊ शकते"
+        ]
+      }
+    },
+    "legal": {
+      "overview": "Land revenue administration, Record of Rights maintenance, survey and boundary processes, and revenue-officer powers/procedures.",
+      "keySections": ["Record of Rights (7/12, 8A)", "Mutation entries", "Survey and boundary", "NA conversion (procedural rules may apply)"]
+    },
+    "sources": [
+      {
+        "label": "India Code / official text (where available)",
+        "url": "https://www.indiacode.nic.in/",
+        "kind": "indiacode"
+      }
+    ],
+    "relatedIds": ["mh-ro-rules-1971", "mh-tenancy-bombay-1948"]
+  },
+  {
+    "id": "mh-tenancy-bombay-1948",
+    "priority": 9,
+    "jurisdiction": { "country": "IN", "stateCode": "MH", "stateName": "Maharashtra", "region": "Bombay region" },
+    "kind": "act",
+    "status": "in-force",
+    "year": 1948,
+    "title": {
+      "en": "Maharashtra Tenancy and Agricultural Lands Act, 1948",
+      "hi": "महाराष्ट्र काश्तकारी और कृषि भूमि अधिनियम, 1948",
+      "mr": "महाराष्ट्र काश्तकारी आणि कृषी जमीन कायदा, 1948"
+    },
+    "shortTitle": {
+      "en": "Tenancy Act (Kul Kayda)",
+      "hi": "काश्तकारी कानून (कुल कायदा)",
+      "mr": "काश्तकारी कायदा (कुल कायदा)"
+    },
+    "topics": ["tenancy", "leasing", "sale-restrictions", "agriculturist"],
+    "keywords": {
+      "en": ["kul kayda", "tenant", "lease", "rent", "agriculturist", "section 63", "sale to non-agriculturist"],
+      "hi": ["कुल कायदा", "किरायेदार", "पट्टा", "लीज", "कृषक", "गैर कृषक को बिक्री"],
+      "mr": ["कुल कायदा", "भाडेकरू", "पट्टा", "लीज", "शेतकरी", "अशेतीला विक्री"]
+    },
+    "plainLanguage": {
+      "en": {
+        "summary": "This law governs tenancy (who can cultivate, tenant rights) and puts restrictions on sale/transfer of agricultural land in many cases.",
+        "whenApplies": [
+          "When land is being leased / cultivated by someone else",
+          "When selling agricultural land and eligibility of buyer matters",
+          "When there is a dispute about tenant vs owner rights"
+        ],
+        "keyPoints": [
+          "Not all ‘informal leases’ are safe—paperwork matters.",
+          "Certain transfers/sales may need eligibility checks or permissions.",
+          "Tenancy disputes can affect mutation and future sale/loan." 
+        ],
+        "whatToDo": [
+          "Before leasing: document terms (period, rent/share, crop, possession).",
+          "Before sale: verify buyer eligibility and any required permissions.",
+          "Keep proof of cultivation and payments/receipts if you are a tenant."
+        ],
+        "requiredDocs": ["7/12", "lease agreement (if any)", "rent/payment receipts", "ID proofs", "any permission/order from authority"],
+        "redFlags": [
+          "Verbal lease with no receipts",
+          "Agent asks you to ‘sign to show you are only a caretaker’ without explaining",
+          "Pressure to sell quickly to an unknown buyer without checking eligibility"
+        ],
+        "edgeCases": [
+          "Different regions (Vidarbha/Marathwada) can have different tenancy acts",
+          "Family land: consent and shares matter"
+        ],
+        "sideEffects": [
+          "Incorrect lease handling can lead to long disputes and blocks on transfer",
+          "Tenant claims can complicate title/loans"
+        ]
+      },
+      "hi": {
+        "summary": "यह कानून काश्तकारी/पट्टे (कौन खेती करेगा, किरायेदार के अधिकार) और कई मामलों में कृषि भूमि की बिक्री/हस्तांतरण पर प्रतिबंध से जुड़ा है।",
+        "whenApplies": [
+          "जब आपकी जमीन पर कोई और खेती कर रहा हो",
+          "जब कृषि जमीन बेच रहे हों और खरीदार की पात्रता जरूरी हो",
+          "जब मालिक बनाम किरायेदार अधिकार का विवाद हो"
+        ],
+        "keyPoints": [
+          "अनौपचारिक/मौखिक पट्टे में जोखिम होता है—रसीद/कागज जरूरी हैं।",
+          "कुछ बिक्री/हस्तांतरण में अनुमति या पात्रता जांच लग सकती है।",
+          "काश्तकारी विवाद नामांतरण व आगे की बिक्री/लोन पर असर डाल सकता है।"
+        ],
+        "whatToDo": [
+          "पट्टा देने/लेने से पहले शर्तें लिखित में रखें (अवधि, किराया/हिस्सा, कब्जा)।",
+          "बिक्री से पहले खरीदार की पात्रता व जरूरी अनुमति जांचें।",
+          "किरायेदार हों तो खेती और भुगतान का सबूत रखें।"
+        ],
+        "requiredDocs": ["7/12", "पट्टा/लीज एग्रीमेंट", "भुगतान रसीद", "ID", "अधिकारियों की अनुमति/आदेश"],
+        "redFlags": ["केवल मौखिक पट्टा", "बिना समझाए ‘कागज पर साइन’", "पात्रता जांच बिना जल्दबाजी में बिक्री"],
+        "edgeCases": ["विदर्भ/मराठवाड़ा में अलग कानून हो सकता है", "परिवार/संयुक्त भूमि में हिस्सेदारी"],
+        "sideEffects": ["गलत पट्टा प्रबंधन से लंबा विवाद", "किरायेदार दावा से टाइटल/लोन जटिल"]
+      },
+      "mr": {
+        "summary": "हा कायदा काश्तकारी/पट्टा (कोण शेती करेल, भाडेकरूचे अधिकार) आणि अनेक प्रकरणात शेती जमिनीच्या विक्री/हस्तांतरणावरील निर्बंध याबाबत आहे.",
+        "whenApplies": ["तुमच्या जमिनीवर दुसरा कोणी शेती करत असल्यास", "शेती जमीन विकताना खरेदीदाराची पात्रता महत्त्वाची असल्यास", "मालक वि. भाडेकरू वाद असल्यास"],
+        "keyPoints": ["फक्त तोंडी पट्टा धोकादायक—पावती/कागदपत्रे ठेवणे आवश्यक.", "काही हस्तांतरणासाठी परवानगी/पात्रता तपासणी लागते.", "वाद असल्यास पुढील विक्री/कर्ज अडू शकते."],
+        "whatToDo": ["पट्टा देताना/घेताना अटी लेखी ठेवा.", "विक्रीपूर्वी पात्रता व परवानगी तपासा.", "भाडेकरू असल्यास शेती व देयकांचे पुरावे ठेवा."],
+        "requiredDocs": ["7/12", "पट्टा करार", "देयक पावत्या", "ओळखपत्र", "परवानगी/आदेश"],
+        "redFlags": ["पावतीशिवाय तोंडी करार", "न समजावता सही घेणे", "पात्रता न तपासता घाई"],
+        "edgeCases": ["प्रदेशानुसार (विदर्भ/मराठवाडा) कायदा वेगळा असू शकतो", "संयुक्त कुटुंबातील हिस्से"],
+        "sideEffects": ["चुकीच्या पट्ट्यामुळे दीर्घ वाद", "भाडेकरू दावा असल्यास व्यवहार अडतो"]
+      }
+    },
+    "legal": {
+      "overview": "Tenancy regulation, tenant protections, and restrictions/permissions around transfer of agricultural land.",
+      "keySections": ["Tenancy rights", "Transfer restrictions (region-specific)", "Authority procedures"]
+    },
+    "sources": [
+      {
+        "label": "India Code (search for the Act)",
+        "url": "https://www.indiacode.nic.in/",
+        "kind": "indiacode"
+      }
+    ],
+    "relatedIds": ["mh-mlrc-1966", "mh-leasing-2017"]
+  },
+  {
+    "id": "mh-ceiling-1961",
+    "priority": 7,
+    "jurisdiction": { "country": "IN", "stateCode": "MH", "stateName": "Maharashtra" },
+    "kind": "act",
+    "status": "in-force",
+    "year": 1961,
+    "title": {
+      "en": "Maharashtra Agricultural Lands (Ceiling on Holdings) Act, 1961",
+      "hi": "महाराष्ट्र कृषि भूमि (धारण सीमा) अधिनियम, 1961",
+      "mr": "महाराष्ट्र कृषी जमीन (धारण मर्यादा) कायदा, 1961"
+    },
+    "topics": ["land-reform", "ceiling", "holdings"],
+    "keywords": {
+      "en": ["ceiling", "max land", "surplus land", "family unit", "holding limit"],
+      "hi": ["सीलिंग", "धारण सीमा", "अधिशेष जमीन", "परिवार इकाई", "सीमा"],
+      "mr": ["सीलिंग", "धारण मर्यादा", "अधिशेष जमीन", "कुटुंब", "मर्यादा"]
+    },
+    "plainLanguage": {
+      "en": {
+        "summary": "This law sets maximum limits on how much agricultural land a person/family can hold. Land above the ceiling can be treated as surplus (subject to rules/exemptions).",
+        "whenApplies": ["When buying/receiving large land areas", "When land is being partitioned within family", "When authorities ask for ceiling declarations"],
+        "keyPoints": ["Ceiling limits depend on land type and irrigation class.", "Family unit rules matter—don’t assume each member gets separate ceiling automatically.", "Records and declarations can be required during scrutiny."],
+        "whatToDo": ["Before purchase/gift/inheritance settlement: check ceiling risk.", "Keep area calculations (hectares/acres) consistent with revenue records.", "If you receive notices: respond with documents and legal help."],
+        "requiredDocs": ["7/12", "family tree/legal heir proof", "area measurement records", "sale/gift documents", "notices/orders"],
+        "redFlags": ["Agent says ‘ceiling never applies’ without checking land class", "Splitting land on paper to avoid ceiling without legal advice"],
+        "edgeCases": ["Exemptions and classifications can be technical", "Old cases / prior surplus proceedings can affect current transactions"],
+        "sideEffects": ["Transactions can get challenged if ceiling compliance is ignored", "Notices can lead to hearings and document scrutiny"]
+      },
+      "hi": {
+        "summary": "यह कानून तय करता है कि किसी व्यक्ति/परिवार के पास अधिकतम कितनी कृषि जमीन हो सकती है। सीमा से ज्यादा जमीन नियमों के अनुसार ‘अधिशेष’ मानी जा सकती है।",
+        "whenApplies": ["जब बड़ी जमीन खरीद/प्राप्त कर रहे हों", "परिवार में बंटवारा हो", "सीलिंग घोषणा/जांच हो"],
+        "keyPoints": ["सीमा जमीन के प्रकार/सिंचाई वर्ग पर निर्भर हो सकती है।", "परिवार इकाई के नियम महत्वपूर्ण हैं।", "जांच के दौरान रिकॉर्ड/घोषणा मांगी जा सकती है।"],
+        "whatToDo": ["खरीद/दान/सेटलमेंट से पहले सीलिंग जोखिम जांचें।", "क्षेत्रफल की गणना 7/12 के अनुसार रखें।", "नोटिस आए तो समय पर जवाब और दस्तावेज़ दें।"],
+        "requiredDocs": ["7/12", "परिवार/वारिस प्रमाण", "क्षेत्रफल रिकॉर्ड", "दस्तावेज़", "नोटिस/आदेश"],
+        "redFlags": ["बिना जांच ‘सीलिंग लागू नहीं’ कहना", "बिना सलाह कागजों पर बंटवारा"],
+        "edgeCases": ["छूट/वर्गीकरण तकनीकी हो सकते हैं", "पुराने सीलिंग मामलों का असर"],
+        "sideEffects": ["अनुपालन न होने पर लेन-देन पर विवाद", "सुनवाई/जांच की प्रक्रिया"]
+      },
+      "mr": {
+        "summary": "हा कायदा व्यक्ती/कुटुंबाकडे किती जास्तीत जास्त शेती जमीन असू शकते याची मर्यादा ठरवतो. मर्यादेपेक्षा जास्त जमीन नियमांनुसार ‘अधिशेष’ मानली जाऊ शकते.",
+        "whenApplies": ["मोठी जमीन खरेदी/प्राप्त करताना", "कुटुंबातील वाटणी करताना", "सीलिंग घोषणेसाठी/तपासणीसाठी नोटीस आल्यास"],
+        "keyPoints": ["मर्यादा जमीन प्रकार/सिंचन वर्गावर अवलंबून असू शकते.", "कुटुंब एकक नियम महत्त्वाचे.", "तपासणीमध्ये कागदपत्रांची मागणी होऊ शकते."],
+        "whatToDo": ["व्यवहारापूर्वी सीलिंग जोखीम तपासा.", "क्षेत्रफळाची मोजणी 7/12 नोंदींशी जुळवा.", "नोटीस आल्यास वेळेत उत्तर व पुरावे द्या."],
+        "requiredDocs": ["7/12", "कुटुंब/वारस पुरावे", "क्षेत्रफळ कागदपत्रे", "व्यवहार दस्तऐवज", "नोटिस/आदेश"],
+        "redFlags": ["तपासणी न करता ‘सीलिंग नाही’ म्हणणे", "सल्ल्याशिवाय कागदी वाटणी"],
+        "edgeCases": ["सवलती/वर्गीकरण तांत्रिक", "जुने प्रकरणे परिणाम करू शकतात"],
+        "sideEffects": ["अनुपालन न झाल्यास व्यवहारावर आक्षेप", "सुनावणी/तपासणी"]
+      }
+    },
+    "legal": {
+      "overview": "Land holding limits, classification, declarations, and surplus land proceedings.",
+      "keySections": ["Ceiling computation rules", "Declarations and scrutiny", "Surplus land proceedings"]
+    },
+    "sources": [
+      {
+        "label": "PRS / Act text (state acts)",
+        "url": "https://prsindia.org/",
+        "kind": "prs"
+      }
+    ],
+    "relatedIds": ["mh-mlrc-1966"]
+  },
+  {
+    "id": "mh-apmc-1963",
+    "priority": 6,
+    "jurisdiction": { "country": "IN", "stateCode": "MH", "stateName": "Maharashtra" },
+    "kind": "act",
+    "status": "in-force",
+    "year": 1963,
+    "title": {
+      "en": "Maharashtra Agricultural Produce Marketing (Development and Regulation) Act, 1963",
+      "hi": "महाराष्ट्र कृषि उपज विपणन (विकास और विनियमन) अधिनियम, 1963",
+      "mr": "महाराष्ट्र कृषी उत्पन्न बाजार (विकास व नियमन) कायदा, 1963"
+    },
+    "shortTitle": { "en": "APMC Act", "hi": "APMC कानून", "mr": "APMC कायदा" },
+    "topics": ["markets", "apmc", "mandi", "trading"],
+    "keywords": {
+      "en": ["apmc", "mandi", "market yard", "trader", "commission", "auction", "licence"],
+      "hi": ["APMC", "मंडी", "बाजार समिति", "लाइसेंस", "नीलामी", "दलाल"],
+      "mr": ["APMC", "मंडी", "बाजार समिती", "परवाना", "लिलाव", "दलाल"]
+    },
+    "plainLanguage": {
+      "en": {
+        "summary": "This law regulates how agricultural produce is traded in regulated markets (APMC/mandis): licences, market fees, and trader rules.",
+        "whenApplies": ["When selling produce in APMC markets", "When dealing with licensed traders/commission agents", "When disputes arise about weights, payments, fees"],
+        "keyPoints": ["Ask for weighment slips and payment receipts.", "Know if the trader/agent is licensed.", "Market fees and deductions should be transparent."],
+        "whatToDo": ["Keep receipts for weighment, fees, and payment.", "If payment is delayed: document the transaction and complain to market committee.", "Avoid handing over produce without a written slip."],
+        "requiredDocs": ["weighment slip", "payment receipt", "lot/auction record (if any)", "ID proof"],
+        "redFlags": ["unexplained deductions", "no weighment slip", "pressure to accept cash without receipt"],
+        "edgeCases": ["Different commodities can have different market practices", "Outside-market trade rules may differ depending on amendments"],
+        "sideEffects": ["Lack of receipts makes recovery hard", "Disputes can become long if records are missing"]
+      },
+      "hi": {
+        "summary": "यह कानून APMC/मंडी में कृषि उपज की खरीद-बिक्री के नियम तय करता है: लाइसेंस, मार्केट फीस, और व्यापारी/एजेंट के नियम।",
+        "whenApplies": ["मंडी में उपज बेचते समय", "लाइसेंसधारी व्यापारी/आढ़ती से लेन-देन", "तौल, भुगतान, कटौती पर विवाद"],
+        "keyPoints": ["तौल पर्ची और भुगतान रसीद जरूर लें।", "व्यापारी/आढ़ती का लाइसेंस देखें।", "कटौती/फीस साफ-साफ होनी चाहिए।"],
+        "whatToDo": ["तौल, फीस और भुगतान की रसीदें रखें।", "भुगतान देर से हो तो सबूत के साथ मार्केट कमेटी में शिकायत करें।", "बिना पर्ची के माल न सौंपें।"],
+        "requiredDocs": ["तौल पर्ची", "भुगतान रसीद", "नीलामी/लॉट रिकॉर्ड", "ID"],
+        "redFlags": ["बिना वजह कटौती", "तौल पर्ची नहीं", "रसीद बिना कैश"],
+        "edgeCases": ["फसल के हिसाब से अलग प्रथा", "संशोधनों से ‘बाहर व्यापार’ के नियम बदल सकते हैं"],
+        "sideEffects": ["रसीद न हो तो पैसा वसूलना मुश्किल", "रिकॉर्ड न हों तो विवाद लंबा"]
+      },
+      "mr": {
+        "summary": "हा कायदा APMC/मंडीमध्ये कृषी उत्पन्नाची खरेदी-विक्री कशी होईल हे ठरवतो: परवाने, बाजार फी, व्यापारी/एजंट नियम.",
+        "whenApplies": ["मंडीमध्ये विक्री करताना", "परवानाधारक व्यापारी/आढत्याशी व्यवहार", "तोल, पैसे, कपात वाद"],
+        "keyPoints": ["तोल पावती आणि देयक पावती घ्या.", "व्यापारी/आढत्याचा परवाना तपासा.", "कपात/फी पारदर्शक असावी."],
+        "whatToDo": ["तोल, फी, देयक पावत्या जपून ठेवा.", "देयक उशिरा असल्यास बाजार समितीकडे तक्रार करा.", "पावतीशिवाय माल देऊ नका."],
+        "requiredDocs": ["तोल पावती", "देयक पावती", "लिलाव/लॉट नोंद", "ओळखपत्र"],
+        "redFlags": ["अस्पष्ट कपात", "तोल पावती नाही", "पावतीशिवाय रोख व्यवहार"],
+        "edgeCases": ["पिकानुसार पद्धती बदलतात", "संशोधनांमुळे नियम बदलू शकतात"],
+        "sideEffects": ["पावती नसल्यास वसुली कठीण", "नोंदी नसतील तर वाद वाढतो"]
+      }
+    },
+    "legal": { "overview": "Regulated market committees, licensing, fees, and dispute redressal around produce trade.", "keySections": ["Licensing", "Market fees", "Weighment and payment norms"] },
+    "sources": [
+      { "label": "MahaPanan (APMC information)", "url": "https://mahapanan.maharashtra.gov.in/SITE/Information/APMC.aspx", "kind": "govt" }
+    ],
+    "relatedIds": []
+  },
+  {
+    "id": "mh-fragmentation-1947",
+    "priority": 5,
+    "jurisdiction": { "country": "IN", "stateCode": "MH", "stateName": "Maharashtra" },
+    "kind": "act",
+    "status": "in-force",
+    "year": 1947,
+    "title": {
+      "en": "Maharashtra Prevention of Fragmentation and Consolidation of Holdings Act, 1947",
+      "hi": "महाराष्ट्र भूमि खंडन रोकथाम और जोत एकीकरण अधिनियम, 1947",
+      "mr": "महाराष्ट्र जमीन तुकडेबंदी प्रतिबंध आणि जोत एकत्रीकरण कायदा, 1947"
+    },
+    "topics": ["land-reform", "fragmentation", "partition"],
+    "keywords": {
+      "en": ["fragmentation", "consolidation", "partition", "small plots", "transfer restrictions"],
+      "hi": ["खंडन", "टुकड़े", "जोत", "एकीकरण", "बंटवारा"],
+      "mr": ["तुकडेबंदी", "खंडन", "जोत", "एकत्रीकरण", "वाटणी"]
+    },
+    "plainLanguage": {
+      "en": {
+        "summary": "This law aims to prevent agricultural land from being broken into very small, non-viable fragments, and supports consolidation in some cases.",
+        "whenApplies": ["When doing family partition", "When selling small portions of a field", "When planning subdivision in records"],
+        "keyPoints": ["Some transfers/partitions can be restricted if they create ‘fragments’.", "Revenue entries and approvals may be required."],
+        "whatToDo": ["Before partition/sale: check whether the proposed plot becomes a ‘fragment’.", "Take written guidance from the local revenue office and keep copies."],
+        "requiredDocs": ["7/12", "map/field sketch", "partition deed (if any)", "application receipts"],
+        "redFlags": ["Selling tiny portions without checking rules", "Middleman says ‘record will be fixed later’"],
+        "edgeCases": ["Rules can depend on local notified standards", "Consolidation schemes may exist in some villages"],
+        "sideEffects": ["Illegal fragmentation can create record blocks and disputes"]
+      },
+      "hi": {
+        "summary": "इसका मकसद खेती की जमीन को बहुत छोटे टुकड़ों में टूटने से रोकना है और कुछ मामलों में जोत एकीकरण को बढ़ावा देना है।",
+        "whenApplies": ["परिवार बंटवारा", "खेत का छोटा हिस्सा बेचने", "रिकॉर्ड में उप-विभाजन"],
+        "keyPoints": ["कुछ बंटवारे/बिक्री ‘फ्रैगमेंट’ बनने पर रोक/नियम में आ सकते हैं।", "राजस्व कार्यालय की प्रक्रिया/अनुमति लग सकती है।"],
+        "whatToDo": ["बंटवारा/बिक्री से पहले नियम जांचें।", "राजस्व कार्यालय से लिखित मार्गदर्शन लें।"],
+        "requiredDocs": ["7/12", "नक्शा/स्केच", "बंटवारा दस्तावेज़", "आवेदन रसीद"],
+        "redFlags": ["नियम बिना छोटे टुकड़े बेचना", "‘बाद में ठीक कर देंगे’ कहना"],
+        "edgeCases": ["स्थानीय मानक/अधिसूचना पर निर्भर", "कुछ जगह एकीकरण योजना"],
+        "sideEffects": ["गलत टुकड़ेबंदी से रिकॉर्ड में अटकाव/विवाद"]
+      },
+      "mr": {
+        "summary": "या कायद्याचा उद्देश शेती जमीन अतिशय लहान तुकड्यांत विभागली जाणे टाळणे आणि काही ठिकाणी जोत एकत्रीकरणास मदत करणे आहे.",
+        "whenApplies": ["कुटुंब वाटणी", "शेताचा छोटा भाग विक्री", "उप-विभागणी नोंद"],
+        "keyPoints": ["‘फ्रॅगमेंट’ तयार होत असल्यास काही व्यवहारांवर निर्बंध येऊ शकतात.", "महसूल कार्यालयाची प्रक्रिया/परवानगी लागू शकते."],
+        "whatToDo": ["व्यवहारापूर्वी नियम तपासा.", "महसूल कार्यालयाकडून लेखी मार्गदर्शन घ्या."],
+        "requiredDocs": ["7/12", "नकाशा/स्केच", "वाटणी दस्तऐवज", "अर्ज पावती"],
+        "redFlags": ["नियम न तपासता छोटा भाग विकणे", "‘नंतर नोंद सुधारू’ असे म्हणणे"],
+        "edgeCases": ["स्थानिक अधिसूचनेवर अवलंबून", "काही गावांत एकत्रीकरण योजना"],
+        "sideEffects": ["चुकीची तुकडेबंदी झाल्यास नोंदी अडतात"]
+      }
+    },
+    "legal": { "overview": "Restrictions to prevent uneconomic fragments and processes for consolidation/record changes.", "keySections": ["Fragment definition", "Transfer/partition restrictions", "Consolidation"] },
+    "sources": [{ "label": "India Code", "url": "https://www.indiacode.nic.in/", "kind": "indiacode" }],
+    "relatedIds": ["mh-mlrc-1966", "mh-ceiling-1961"]
+  },
+  {
+    "id": "mh-leasing-2017",
+    "priority": 8,
+    "jurisdiction": { "country": "IN", "stateCode": "MH", "stateName": "Maharashtra" },
+    "kind": "act",
+    "status": "in-force",
+    "year": 2017,
+    "title": {
+      "en": "Maharashtra Agricultural Land Leasing Act, 2017",
+      "hi": "महाराष्ट्र कृषि भूमि पट्टेदारी अधिनियम, 2017",
+      "mr": "महाराष्ट्र कृषी जमीन भाडेपट्टा कायदा, 2017"
+    },
+    "topics": ["leasing", "tenancy", "contracts"],
+    "keywords": {
+      "en": ["leasing", "lease", "rent", "registered lease", "tenant protection"],
+      "hi": ["पट्टा", "लीज", "भाड़ा", "पंजीकृत पट्टा", "पट्टेदारी"],
+      "mr": ["भाडेपट्टा", "लीज", "भाडे", "नोंदणीकृत", "काश्तकारी"]
+    },
+    "plainLanguage": {
+      "en": {
+        "summary": "This newer framework encourages formal land leasing with clearer rights and responsibilities for both owner and cultivator (details depend on notified rules/implementation).",
+        "whenApplies": ["When you want to lease land formally", "When you want written terms to prevent disputes"],
+        "keyPoints": ["Written terms reduce future disputes.", "Check current local procedure for registering/recording leases."],
+        "whatToDo": ["Draft clear lease terms (duration, rent/share, responsibilities).", "Keep ID proofs and record receipts of payments.", "Confirm the local process (Talathi/Tehsil) for recording the lease."],
+        "requiredDocs": ["7/12", "IDs", "lease agreement", "payment receipts"],
+        "redFlags": ["Signing a ‘power of attorney’ when you only intend a lease", "Owner/agent refuses any written record"],
+        "edgeCases": ["Some benefits/schemes may require proof of cultivation and may treat lease differently"],
+        "sideEffects": ["Better paperwork can protect both sides; bad paperwork can create long disputes"]
+      },
+      "hi": {
+        "summary": "यह ढांचा औपचारिक (लिखित) पट्टे को बढ़ावा देता है ताकि मालिक और खेती करने वाले दोनों के अधिकार/जिम्मेदारियाँ स्पष्ट रहें (विवरण स्थानीय नियम/प्रक्रिया पर निर्भर)।",
+        "whenApplies": ["जब आप जमीन लिखित पट्टे पर देना/लेना चाहें", "जब विवाद से बचने के लिए शर्तें साफ हों"],
+        "keyPoints": ["लिखित शर्तें विवाद कम करती हैं।", "स्थानीय रिकॉर्डिंग/रजिस्ट्रेशन प्रक्रिया जांचें।"],
+        "whatToDo": ["पट्टे की शर्तें साफ लिखें।", "भुगतान रसीदें रखें।", "तलाठी/तहसील से पट्टा रिकॉर्ड कराने की प्रक्रिया पूछें।"],
+        "requiredDocs": ["7/12", "ID", "पट्टा एग्रीमेंट", "रसीदें"],
+        "redFlags": ["पट्टे के बजाय POA पर साइन", "लिखित रिकॉर्ड से इंकार"],
+        "edgeCases": ["कुछ योजनाओं में खेती का सबूत जरूरी—पट्टा होने पर प्रक्रिया अलग हो सकती है"],
+        "sideEffects": ["ठीक कागज दोनों को सुरक्षा देता", "गलत कागज से विवाद"]
+      },
+      "mr": {
+        "summary": "हा नवीन चौकट औपचारिक (लेखी) भाडेपट्ट्यास प्रोत्साहन देतो जेणेकरून मालक आणि लागवड करणारा दोघांचे हक्क/जबाबदाऱ्या स्पष्ट राहतील (तपशील स्थानिक नियमांवर अवलंबून).",
+        "whenApplies": ["जमीन लेखी भाडेपट्ट्यावर द्यायची/घ्यायची असल्यास", "वाद टाळण्यासाठी अटी स्पष्ट हव्या असल्यास"],
+        "keyPoints": ["लेखी अटी वाद कमी करतात.", "नोंदणी/रेकॉर्डिंग प्रक्रिया स्थानिक पातळीवर तपासा."],
+        "whatToDo": ["अटी स्पष्ट करा (कालावधी, भाडे/हिस्सा, जबाबदाऱ्या).", "देयक पावत्या ठेवा.", "तलाठी/तहसील कार्यालयात रेकॉर्डिंग प्रक्रिया विचारा."],
+        "requiredDocs": ["7/12", "ओळखपत्र", "भाडेपट्टा करार", "पावत्या"],
+        "redFlags": ["फक्त भाडेपट्टा असताना POA वर सही", "लेखी नोंदीला नकार"],
+        "edgeCases": ["काही योजनांमध्ये लागवडीचा पुरावा लागतो—भाडेपट्ट्यावर नियम वेगळे"],
+        "sideEffects": ["योग्य कागद संरक्षण देतो", "चुकीच्या कागदाने वाद"]
+      }
+    },
+    "legal": { "overview": "Framework to support structured land leasing (implementation can be rule-dependent).", "keySections": ["Lease terms", "Recording/registration procedure (as notified)"] },
+    "sources": [{ "label": "PRS (Act text / updates)", "url": "https://prsindia.org/files/bills_acts/acts_states/maharashtra/2023/Act28of2023MH.pdf", "kind": "prs" }],
+    "relatedIds": ["mh-tenancy-bombay-1948"]
+  },
+  {
+    "id": "mh-ro-rules-1971",
+    "priority": 8,
+    "jurisdiction": { "country": "IN", "stateCode": "MH", "stateName": "Maharashtra" },
+    "kind": "rule",
+    "status": "in-force",
+    "year": 1971,
+    "title": {
+      "en": "Record of Rights Rules (Maharashtra), 1971",
+      "hi": "रिकॉर्ड ऑफ राइट्स नियम (महाराष्ट्र), 1971",
+      "mr": "रेकॉर्ड ऑफ राइट्स नियम (महाराष्ट्र), 1971"
+    },
+    "topics": ["land-records", "7-12", "8a", "entries"],
+    "keywords": {
+      "en": ["record of rights rules", "7/12 rules", "entry", "mutation procedure"],
+      "hi": ["रिकॉर्ड ऑफ राइट्स", "7/12 नियम", "प्रविष्टि", "नामांतरण प्रक्रिया"],
+      "mr": ["रेकॉर्ड ऑफ राइट्स", "7/12 नियम", "नोंद", "नावांतरण प्रक्रिया"]
+    },
+    "plainLanguage": {
+      "en": {
+        "summary": "These rules explain the practical ‘how’ behind 7/12 and 8A entries: what gets recorded, how notices are served, and how entries are updated.",
+        "whenApplies": ["When you file mutation or correction", "When you receive a notice about an entry change"],
+        "keyPoints": ["Notices and timelines matter.", "Always keep acknowledgment copies."],
+        "whatToDo": ["If you get a notice: respond in writing with documents.", "Ask for a certified copy of the final order/entry."],
+        "requiredDocs": ["notice copy", "application copy", "supporting deeds", "ID"],
+        "redFlags": ["Entry changed without any notice—challenge quickly"],
+        "edgeCases": ["Service of notice disputes"],
+        "sideEffects": ["Unchallenged wrong entries can become ‘accepted’ in practice"]
+      },
+      "hi": {
+        "summary": "ये नियम 7/12 और 8A की प्रविष्टियों की व्यावहारिक प्रक्रिया बताते हैं: क्या दर्ज होता है, नोटिस कैसे दिया जाता है, और प्रविष्टि कैसे बदली जाती है।",
+        "whenApplies": ["नामांतरण/सुधार आवेदन", "प्रविष्टि बदलाव का नोटिस"],
+        "keyPoints": ["नोटिस और समय सीमा महत्वपूर्ण।", "हर आवेदन की पोच रखें।"],
+        "whatToDo": ["नोटिस मिले तो लिखित जवाब और दस्तावेज़ दें।", "अंतिम आदेश/प्रविष्टि की प्रमाणित कॉपी लें।"],
+        "requiredDocs": ["नोटिस", "आवेदन", "दस्तावेज़", "ID"],
+        "redFlags": ["बिना नोटिस प्रविष्टि बदलना—जल्दी आपत्ति करें"],
+        "edgeCases": ["नोटिस की सेवा पर विवाद"],
+        "sideEffects": ["गलत प्रविष्टि समय पर न रोकी तो आगे परेशानी"]
+      },
+      "mr": {
+        "summary": "हे नियम 7/12 आणि 8A नोंदी कशा ठेवायच्या/बदलायच्या याची प्रत्यक्ष प्रक्रिया सांगतात: काय नोंद होते, नोटीस कशी दिली जाते, नोंद कशी अपडेट होते.",
+        "whenApplies": ["नावांतरण/दुरुस्ती अर्ज", "नोंद बदलाबाबत नोटीस"],
+        "keyPoints": ["नोटीस व वेळमर्यादा महत्त्वाच्या.", "पोच/पावत्या जपून ठेवा."],
+        "whatToDo": ["नोटीस आल्यास लेखी उत्तर व पुरावे द्या.", "अंतिम आदेश/नोंदीची प्रमाणित प्रत घ्या."],
+        "requiredDocs": ["नोटीस", "अर्ज", "दस्तऐवज", "ओळखपत्र"],
+        "redFlags": ["नोटीसशिवाय नोंद बदल—लवकर आक्षेप"],
+        "edgeCases": ["नोटीस सेवा वाद"],
+        "sideEffects": ["चुकीची नोंद रोखली नाही तर पुढे अडचण"]
+      }
+    },
+    "legal": { "overview": "Procedural rules for maintaining the Record of Rights and mutation/correction entries.", "keySections": ["Notice and hearing", "Entry update procedure"] },
+    "sources": [{ "label": "State rules (official repository varies)", "url": "https://maitri.maharashtra.gov.in/resources/acts-and-rules/", "kind": "govt" }],
+    "relatedIds": ["mh-mlrc-1966"]
+  }
+]

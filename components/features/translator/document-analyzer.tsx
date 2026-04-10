@@ -646,7 +646,7 @@ export function DocumentAnalyzer() {
             <Tabs
               value={activeTab}
               onValueChange={(v) => setActiveTab(v as typeof activeTab)}
-              className="w-full flex flex-col"
+              className="flex w-full flex-col"
             >
               <div className="border-b px-3 py-2.5 sm:px-4 sm:py-3">
                 <TabsList
