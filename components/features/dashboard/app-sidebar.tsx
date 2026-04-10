@@ -2,13 +2,9 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import {
-  BookOpenText,
-  FileText,
-  LayoutDashboard,
-  UserRound,
-} from "lucide-react"
+import { BookOpenText, FileText, LayoutDashboard } from "lucide-react"
 
+import { NavUser } from "@/components/layout/user/nav-user"
 import {
   Sidebar,
   SidebarContent,
@@ -18,23 +14,19 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
-import { FarmerProfileCredenza } from "@/components/features/profile/farmer-profile-credenza"
+import { useSession } from "@/lib/auth-client"
 import { Link } from "@/i18n/navigation"
 import { cn } from "@/lib/utils"
 
-export type DashboardUser = {
-  id: string
-  name?: string | null
-  email?: string | null
-}
-
-export function AppSidebar({ user }: { user: DashboardUser }) {
+export function AppSidebar() {
   const tSidebar = useTranslations("Sidebar")
   const tApp = useTranslations("App")
+  const { data: session } = useSession()
 
   return (
     <Sidebar variant="inset" collapsible="icon">
@@ -79,22 +71,6 @@ export function AppSidebar({ user }: { user: DashboardUser }) {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>{tSidebar("profile")}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <FarmerProfileCredenza>
-                  <SidebarMenuButton>
-                    <UserRound />
-                    <span>{tSidebar("farmerProfile")}</span>
-                  </SidebarMenuButton>
-                </FarmerProfileCredenza>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
           <SidebarGroupLabel>{tSidebar("tools")}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -115,14 +91,10 @@ export function AppSidebar({ user }: { user: DashboardUser }) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="gap-1 group-data-[collapsible=icon]:hidden">
-        <div className="bg-sidebar-accent/20 rounded-lg border p-3">
-          <div className="text-xs font-medium">{tSidebar("signedIn")}</div>
-          <div className="text-sidebar-foreground/70 mt-1 truncate text-xs">
-            {user.email ?? user.name ?? user.id}
-          </div>
-        </div>
+      <SidebarFooter>
+        <NavUser session={session ?? null} />
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }

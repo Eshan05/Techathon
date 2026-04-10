@@ -13,6 +13,9 @@ export const farmerProfiles = sqliteTable(
     fullName: text("full_name"),
     phone: text("phone"),
     preferredLanguage: text("preferred_language").default("hi").notNull(),
+    supportNeed: text("support_need"),
+    trustedHelperName: text("trusted_helper_name"),
+    trustedHelperPhone: text("trusted_helper_phone"),
 
     state: text("state"),
     district: text("district"),

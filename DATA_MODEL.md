@@ -19,6 +19,8 @@ Suggested fields:
 - `userId` (PK, FK → `users.id`)
 - `fullName`, `phone`
 - `preferredLanguage` (e.g. `hi`, `mr`, `pa`)
+- `supportNeed` (e.g. `land-records`, `schemes`, `notices`)
+- `trustedHelperName`, `trustedHelperPhone`
 - `state`, `district`, `tehsil`, `village`
 - `createdAt`, `updatedAt`
 

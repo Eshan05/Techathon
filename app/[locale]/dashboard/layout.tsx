@@ -28,15 +28,5 @@ export default async function Layout({
     redirect(`/${locale}/sign-in?callbackURL=/${locale}/dashboard`)
   }
 
-  return (
-    <DashboardShell
-      user={{
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
-      }}
-    >
-      {children}
-    </DashboardShell>
-  )
+  return <DashboardShell>{children}</DashboardShell>
 }

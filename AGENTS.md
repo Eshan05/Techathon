@@ -93,3 +93,4 @@ ABSOLUTELY NON-NEGOTIABLE:
 6. Everything must be free and not require a credit card
 7. Always do `pnpm i` before `pnpm dev`. After any changes are done always make sure to do `lint:ts` and `format`.
 8. Card-y UI should not be the first thing you go for, unless necessary
+9. Keep packages upto their latest stable releases

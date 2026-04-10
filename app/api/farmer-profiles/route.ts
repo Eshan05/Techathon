@@ -13,6 +13,12 @@ const upsertFarmerProfileSchema = z
     fullName: z.string().trim().min(1).max(120).nullable().optional(),
     phone: z.string().trim().min(7).max(20).nullable().optional(),
     preferredLanguage: z.string().trim().min(2).max(20).optional(),
+    supportNeed: z
+      .enum(["land-records", "schemes", "notices", "complaints", "cases"])
+      .nullable()
+      .optional(),
+    trustedHelperName: z.string().trim().min(1).max(120).nullable().optional(),
+    trustedHelperPhone: z.string().trim().min(7).max(20).nullable().optional(),
 
     state: z.string().trim().min(1).max(120).nullable().optional(),
     district: z.string().trim().min(1).max(120).nullable().optional(),
@@ -20,6 +26,41 @@ const upsertFarmerProfileSchema = z
     village: z.string().trim().min(1).max(120).nullable().optional(),
   })
   .strict()
+
+type FarmerProfileRow =
+  | {
+      fullName: string | null
+      phone: string | null
+      preferredLanguage: string | null
+      supportNeed: string | null
+      trustedHelperName: string | null
+      trustedHelperPhone: string | null
+      state: string | null
+      district: string | null
+      tehsil: string | null
+      village: string | null
+    }
+  | null
+  | undefined
+
+function normalizeProfile(
+  row: FarmerProfileRow,
+  session: { user: { id: string; name?: string | null } }
+) {
+  return {
+    userId: session.user.id,
+    fullName: row?.fullName ?? session.user.name ?? null,
+    phone: row?.phone ?? null,
+    preferredLanguage: row?.preferredLanguage ?? "hi",
+    supportNeed: row?.supportNeed ?? "land-records",
+    trustedHelperName: row?.trustedHelperName ?? null,
+    trustedHelperPhone: row?.trustedHelperPhone ?? null,
+    state: row?.state ?? null,
+    district: row?.district ?? null,
+    tehsil: row?.tehsil ?? null,
+    village: row?.village ?? null,
+  }
+}
 
 export async function GET(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers })
@@ -31,18 +72,7 @@ export async function GET(request: Request) {
     where: eq(farmerProfiles.userId, session.user.id),
   })
 
-  const fallback = {
-    userId: session.user.id,
-    fullName: session.user.name ?? null,
-    phone: null,
-    preferredLanguage: "hi",
-    state: null,
-    district: null,
-    tehsil: null,
-    village: null,
-  }
-
-  return NextResponse.json({ data: row ?? fallback })
+  return NextResponse.json({ data: normalizeProfile(row, session) })
 }
 
 export async function PUT(request: Request) {
@@ -65,6 +95,9 @@ export async function PUT(request: Request) {
     fullName: parsed.data.fullName ?? null,
     phone: parsed.data.phone ?? null,
     preferredLanguage: parsed.data.preferredLanguage ?? "hi",
+    supportNeed: parsed.data.supportNeed ?? "land-records",
+    trustedHelperName: parsed.data.trustedHelperName ?? null,
+    trustedHelperPhone: parsed.data.trustedHelperPhone ?? null,
     state: parsed.data.state ?? null,
     district: parsed.data.district ?? null,
     tehsil: parsed.data.tehsil ?? null,
@@ -81,5 +114,5 @@ export async function PUT(request: Request) {
     where: eq(farmerProfiles.userId, session.user.id),
   })
 
-  return NextResponse.json({ data: row })
+  return NextResponse.json({ data: normalizeProfile(row, session) })
 }
