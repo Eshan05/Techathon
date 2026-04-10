@@ -1,18 +1,18 @@
-import { passkey } from "@better-auth/passkey";
-import { betterAuth, type BetterAuthOptions } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { nextCookies } from "better-auth/next-js";
-import { twoFactor, lastLoginMethod, multiSession } from "better-auth/plugins";
+import { passkey } from "@better-auth/passkey"
+import { betterAuth, type BetterAuthOptions } from "better-auth"
+import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { nextCookies } from "better-auth/next-js"
+import { twoFactor, lastLoginMethod, multiSession } from "better-auth/plugins"
 
-import { db } from "@/lib/db/db";
-import * as schema from "@/lib/db/schema";
-import { authBaseUrl, authSecret, cookieDomain } from "@/utils/constants";
+import { db } from "@/lib/db/db"
+import * as schema from "@/lib/db/schema"
+import { authBaseUrl, authSecret, cookieDomain } from "@/utils/constants"
 
-const googleClientId = process.env.GOOGLE_CLIENT_ID;
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const googleClientId = process.env.GOOGLE_CLIENT_ID
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET
 
 const authOptions = {
-  appName: "Acquittance",
+  appName: "Kisan Vakil",
   baseURL: authBaseUrl,
   basePath: "/api/sessions",
   secret: authSecret,
@@ -35,19 +35,19 @@ const authOptions = {
     enabled: true,
     async sendResetPassword({ user, url }) {
       // Dev-friendly fallback. Wire up Resend/Postmark/etc in production.
-      console.log(`[Better Auth] Reset password for ${user.email}: ${url}`);
+      console.log(`[Better Auth] Reset password for ${user.email}: ${url}`)
     },
   },
   emailVerification: {
     async sendVerificationEmail({ user, url }) {
-      console.log(`[Better Auth] Verify email for ${user.email}: ${url}`);
+      console.log(`[Better Auth] Verify email for ${user.email}: ${url}`)
     },
   },
   plugins: [
     twoFactor({
       otpOptions: {
         async sendOTP({ user, otp }) {
-          console.log(`[Better Auth] OTP for ${user.email}: ${otp}`);
+          console.log(`[Better Auth] OTP for ${user.email}: ${otp}`)
         },
       },
     }),
@@ -63,6 +63,6 @@ const authOptions = {
       domain: cookieDomain,
     },
   },
-} satisfies BetterAuthOptions;
+} satisfies BetterAuthOptions
 
-export const auth = betterAuth(authOptions);
+export const auth = betterAuth(authOptions)
