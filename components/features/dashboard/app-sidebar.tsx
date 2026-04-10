@@ -2,7 +2,13 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { BookOpenText, FileText, LayoutDashboard, ScanLine } from "lucide-react"
+import {
+  BookOpenText,
+  FileText,
+  Gavel,
+  LayoutDashboard,
+  ScanLine,
+} from "lucide-react"
 
 import { NavUser } from "@/components/layout/user/nav-user"
 import {
@@ -79,6 +85,14 @@ export function AppSidebar() {
                   <Link href="/dashboard/translator">
                     <ScanLine />
                     <span>{tSidebar("documentAnalyzer")}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/laws">
+                    <Gavel />
+                    <span>{tSidebar("laws")}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
