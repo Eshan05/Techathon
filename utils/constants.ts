@@ -1,8 +1,8 @@
 function cleanUrlForCookieDomain(url: string | undefined): string | undefined {
-  if (!url) return undefined;
-  const domain = url.replace(/^https?:\/\//, "");
-  const cleanedDomain = domain.replace(/\/$/, "");
-  return `.${cleanedDomain}`;
+  if (!url) return undefined
+  const domain = url.replace(/^https?:\/\//, "")
+  const cleanedDomain = domain.replace(/\/$/, "")
+  return `.${cleanedDomain}`
 }
 
 export const baseURL: string | undefined =
@@ -12,7 +12,7 @@ export const baseURL: string | undefined =
       : process.env.VERCEL_ENV === "preview"
         ? `https://${process.env.VERCEL_URL}`
         : undefined
-    : undefined;
+    : undefined
 
 export const cookieDomain: string | undefined =
   process.env.VERCEL === "1"
@@ -21,26 +21,26 @@ export const cookieDomain: string | undefined =
       : process.env.VERCEL_ENV === "preview"
         ? `.${process.env.VERCEL_URL}`
         : undefined
-    : undefined;
+    : undefined
 
 export const authBaseUrl =
   process.env.BETTER_AUTH_URL ||
   process.env.NEXT_PUBLIC_BETTER_AUTH_BASE ||
   baseURL ||
-  "http://localhost:3000";
+  "http://localhost:3000"
 
 export const authSecret =
   process.env.BETTER_AUTH_SECRET ||
-  "local-development-secret-change-before-production-123456789";
+  "local-development-secret-change-before-production-123456789"
 
 export const publicAuthBaseUrl =
   process.env.NEXT_PUBLIC_BETTER_AUTH_BASE ||
   process.env.NEXT_PUBLIC_BASE_URL ||
-  "http://localhost:3000";
+  "http://localhost:3000"
 
 export const tursoDatabaseUrl =
-  process.env.TURSO_DATABASE_URL || "file:./.data/auth.db";
+  process.env.TURSO_DATABASE_URL || "file:./.data/auth.db"
 
 export const tursoAuthToken = tursoDatabaseUrl.startsWith("file:")
   ? undefined
-  : process.env.TURSO_AUTH_TOKEN;
+  : process.env.TURSO_AUTH_TOKEN

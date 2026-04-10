@@ -1,7 +1,7 @@
-import { Package } from 'lucide-react'
-import { IconType } from 'react-icons'
-import { BiWater } from 'react-icons/bi'
-import { BsBookmark, BsLightningCharge, BsTools } from 'react-icons/bs'
+import { Package } from "lucide-react"
+import { IconType } from "react-icons"
+import { BiWater } from "react-icons/bi"
+import { BsBookmark, BsLightningCharge, BsTools } from "react-icons/bs"
 import {
   FaBook,
   FaCamera,
@@ -23,9 +23,9 @@ import {
   FaTrophy,
   FaTshirt,
   FaUtensils,
-} from 'react-icons/fa'
-import { HiAcademicCap } from 'react-icons/hi'
-import { IoGameController } from 'react-icons/io5'
+} from "react-icons/fa"
+import { HiAcademicCap } from "react-icons/hi"
+import { IoGameController } from "react-icons/io5"
 import {
   MdCake,
   MdCardMembership,
@@ -33,13 +33,13 @@ import {
   MdMovie,
   MdSportsSoccer,
   MdWorkspacePremium,
-} from 'react-icons/md'
-import { RiLuggageCartLine } from 'react-icons/ri'
+} from "react-icons/md"
+import { RiLuggageCartLine } from "react-icons/ri"
 
 export const iconMap: Record<string, IconType> = {
   shirt: FaTshirt,
   tshirt: FaTshirt,
-  't-shirt': FaTshirt,
+  "t-shirt": FaTshirt,
   hat: FaHatCowboy,
   cap: FaHatCowboy,
   food: FaUtensils,
@@ -123,69 +123,69 @@ export const typeStyles: Record<
   { bg: string; text: string; border: string }
 > = {
   seminar: {
-    bg: 'bg-blue-500/10',
-    text: 'text-blue-600',
-    border: 'border-blue-500/30',
+    bg: "bg-blue-500/10",
+    text: "text-blue-600",
+    border: "border-blue-500/30",
   },
   workshop: {
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-600',
-    border: 'border-amber-500/30',
+    bg: "bg-amber-500/10",
+    text: "text-amber-600",
+    border: "border-amber-500/30",
   },
   conference: {
-    bg: 'bg-indigo-500/10',
-    text: 'text-indigo-600',
-    border: 'border-indigo-500/30',
+    bg: "bg-indigo-500/10",
+    text: "text-indigo-600",
+    border: "border-indigo-500/30",
   },
   competition: {
-    bg: 'bg-red-500/10',
-    text: 'text-red-600',
-    border: 'border-red-500/30',
+    bg: "bg-red-500/10",
+    text: "text-red-600",
+    border: "border-red-500/30",
   },
   meetup: {
-    bg: 'bg-teal-500/10',
-    text: 'text-teal-600',
-    border: 'border-teal-500/30',
+    bg: "bg-teal-500/10",
+    text: "text-teal-600",
+    border: "border-teal-500/30",
   },
   training: {
-    bg: 'bg-cyan-500/10',
-    text: 'text-cyan-600',
-    border: 'border-cyan-500/30',
+    bg: "bg-cyan-500/10",
+    text: "text-cyan-600",
+    border: "border-cyan-500/30",
   },
   webinar: {
-    bg: 'bg-sky-500/10',
-    text: 'text-sky-600',
-    border: 'border-sky-500/30',
+    bg: "bg-sky-500/10",
+    text: "text-sky-600",
+    border: "border-sky-500/30",
   },
   hackathon: {
-    bg: 'bg-orange-500/10',
-    text: 'text-orange-600',
-    border: 'border-orange-500/30',
+    bg: "bg-orange-500/10",
+    text: "text-orange-600",
+    border: "border-orange-500/30",
   },
   concert: {
-    bg: 'bg-pink-500/10',
-    text: 'text-pink-600',
-    border: 'border-pink-500/30',
+    bg: "bg-pink-500/10",
+    text: "text-pink-600",
+    border: "border-pink-500/30",
   },
   fundraiser: {
-    bg: 'bg-emerald-500/10',
-    text: 'text-emerald-600',
-    border: 'border-emerald-500/30',
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-600",
+    border: "border-emerald-500/30",
   },
   networking: {
-    bg: 'bg-violet-500/10',
-    text: 'text-violet-600',
-    border: 'border-violet-500/30',
+    bg: "bg-violet-500/10",
+    text: "text-violet-600",
+    border: "border-violet-500/30",
   },
   internal: {
-    bg: 'bg-slate-500/10',
-    text: 'text-slate-600',
-    border: 'border-slate-500/30',
+    bg: "bg-slate-500/10",
+    text: "text-slate-600",
+    border: "border-slate-500/30",
   },
   other: {
-    bg: 'bg-gray-500/10',
-    text: 'text-gray-600',
-    border: 'border-gray-500/30',
+    bg: "bg-gray-500/10",
+    text: "text-gray-600",
+    border: "border-gray-500/30",
   },
 }
 
@@ -210,49 +210,49 @@ export const inventoryCategoryStyles: Record<
   { bg: string; text: string; border: string }
 > = {
   Staples: {
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-700',
-    border: 'border-amber-500/30',
+    bg: "bg-amber-500/10",
+    text: "text-amber-700",
+    border: "border-amber-500/30",
   },
   Snacks: {
-    bg: 'bg-orange-500/10',
-    text: 'text-orange-700',
-    border: 'border-orange-500/30',
+    bg: "bg-orange-500/10",
+    text: "text-orange-700",
+    border: "border-orange-500/30",
   },
   Beverages: {
-    bg: 'bg-cyan-500/10',
-    text: 'text-cyan-700',
-    border: 'border-cyan-500/30',
+    bg: "bg-cyan-500/10",
+    text: "text-cyan-700",
+    border: "border-cyan-500/30",
   },
-  'Personal Care': {
-    bg: 'bg-pink-500/10',
-    text: 'text-pink-700',
-    border: 'border-pink-500/30',
+  "Personal Care": {
+    bg: "bg-pink-500/10",
+    text: "text-pink-700",
+    border: "border-pink-500/30",
   },
-  'Home Care': {
-    bg: 'bg-blue-500/10',
-    text: 'text-blue-700',
-    border: 'border-blue-500/30',
+  "Home Care": {
+    bg: "bg-blue-500/10",
+    text: "text-blue-700",
+    border: "border-blue-500/30",
   },
-  'Edible Oils': {
-    bg: 'bg-yellow-500/10',
-    text: 'text-yellow-700',
-    border: 'border-yellow-500/30',
+  "Edible Oils": {
+    bg: "bg-yellow-500/10",
+    text: "text-yellow-700",
+    border: "border-yellow-500/30",
   },
   Cleaning: {
-    bg: 'bg-indigo-500/10',
-    text: 'text-indigo-700',
-    border: 'border-indigo-500/30',
+    bg: "bg-indigo-500/10",
+    text: "text-indigo-700",
+    border: "border-indigo-500/30",
   },
-  'Baby Care': {
-    bg: 'bg-violet-500/10',
-    text: 'text-violet-700',
-    border: 'border-violet-500/30',
+  "Baby Care": {
+    bg: "bg-violet-500/10",
+    text: "text-violet-700",
+    border: "border-violet-500/30",
   },
   Kitchenware: {
-    bg: 'bg-emerald-500/10',
-    text: 'text-emerald-700',
-    border: 'border-emerald-500/30',
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-700",
+    border: "border-emerald-500/30",
   },
 }
 
@@ -260,10 +260,10 @@ export const inventoryCategoryIcons: Record<string, IconType> = {
   Staples: FaShoppingBag,
   Snacks: FaGift,
   Beverages: FaCoffee,
-  'Personal Care': FaIdBadge,
-  'Home Care': BsTools,
-  'Edible Oils': BiWater,
+  "Personal Care": FaIdBadge,
+  "Home Care": BsTools,
+  "Edible Oils": BiWater,
   Cleaning: FaStickyNote,
-  'Baby Care': MdCelebration,
+  "Baby Care": MdCelebration,
   Kitchenware: FaUtensils,
 }
