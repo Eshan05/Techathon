@@ -1,3 +1,5 @@
+# IMPORTANT. ALWAYS READ, DON'T SKIP
+
 “Kisan Vakil” sounds like a farmer’s legal and advisory ally, so the app should feel like a sharp pocket advocate for land, schemes, disputes, and paperwork. Mostly, farmers face an issue whereby they are made to signup paperwork they don't know about so we want to combat that
 
 Core features:
@@ -90,3 +92,4 @@ ABSOLUTELY NON-NEGOTIABLE:
 4. ALWAYS search the web for the LATEST stuff. No excuses. You can fetch, search, crawl and so on
 5. Make heavy use of flyout or such components, don't just link to pages. The app should feel like a single page experience, with modals, flyouts, and such. Use drawers, dialogs, grouped input, accordions and so on where you can.
 6. Everything must be free and not require a credit card
+7. Always do `pnpm i` before `pnpm dev`. After any changes are done always make sure to do `lint:ts` and `format`.
