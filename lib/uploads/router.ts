@@ -1,6 +1,6 @@
-import { createUploadthing, type FileRouter } from "uploadthing/next";
+import { createUploadthing, type FileRouter } from "uploadthing/next"
 
-const f = createUploadthing();
+const f = createUploadthing()
 
 export const uploadRouter = {
   avatarImage: f({
@@ -18,6 +18,6 @@ export const uploadRouter = {
       uploadedAt: metadata.uploadedAt,
       url: file.ufsUrl,
     })),
-} satisfies FileRouter;
+} satisfies FileRouter
 
-export type UploadRouter = typeof uploadRouter;
+export type UploadRouter = typeof uploadRouter
