@@ -1099,7 +1099,7 @@ export function LawsExplorer() {
             </CredenzaDescription>
           </CredenzaHeader>
 
-          <ScrollArea className="h-[70vh] overflow-x-hidden w-full px-4">
+          <ScrollArea className="h-[70vh] w-full overflow-x-hidden px-4">
             <CredenzaBody className="w-full max-w-full">
               <div ref={lawContentRef} className="space-y-4 py-4">
                 {lawDetailQuery.isLoading ? (

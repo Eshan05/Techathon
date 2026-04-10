@@ -18,9 +18,13 @@ export const identityUploadSchema = z.object({
   documentType: z.enum(SUPPORTED_IDENTITY_DOCS),
   file: z
     .instanceof(File)
-    .refine((file) => file.size <= 10 * 1024 * 1024, "File size must be under 10MB")
     .refine(
-      (file) => ["image/jpeg", "image/png", "application/pdf"].includes(file.type),
+      (file) => file.size <= 10 * 1024 * 1024,
+      "File size must be under 10MB"
+    )
+    .refine(
+      (file) =>
+        ["image/jpeg", "image/png", "application/pdf"].includes(file.type),
       "Only JPEG, PNG, or PDF files are allowed"
     ),
 })
