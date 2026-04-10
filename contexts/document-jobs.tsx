@@ -5,16 +5,30 @@ import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import type { DocumentJobState, DocumentJobStatus } from "@/lib/qstash/types"
+import type {
+  DocumentOcrJobState,
+  DocumentOcrJobStatus,
+} from "@/lib/qstash/document-ocr-jobs"
 
 type DocLike = {
   id: string
   title: string
   sha256?: string | null
   job?: DocumentJobStatus | null
+  ocrJob?: DocumentOcrJobStatus | null
 }
 
 function isPending(state: DocumentJobState | null) {
   return state === "queued" || state === "processing"
+}
+
+function isOcrPending(state: DocumentOcrJobState | null) {
+  return (
+    state === "queued" ||
+    state === "extracting" ||
+    state === "chunking" ||
+    state === "saving"
+  )
 }
 
 export function DocumentJobsProvider({
@@ -24,6 +38,9 @@ export function DocumentJobsProvider({
 }) {
   const qc = useQueryClient()
   const prevById = React.useRef(new Map<string, DocumentJobState | null>())
+  const prevOcrById = React.useRef(
+    new Map<string, DocumentOcrJobState | null>()
+  )
 
   React.useEffect(() => {
     const tick = () => {
@@ -36,7 +53,11 @@ export function DocumentJobsProvider({
         const nextState = d.job?.state ?? null
         const prevState = prevById.current.get(d.id) ?? null
 
-        if (isPending(nextState)) hasPending = true
+        const nextOcrState = d.ocrJob?.state ?? null
+        const prevOcrState = prevOcrById.current.get(d.id) ?? null
+
+        if (isPending(nextState) || isOcrPending(nextOcrState))
+          hasPending = true
 
         // Avoid spamming on first paint: only toast meaningful transitions.
         if (prevState !== nextState) {
@@ -60,6 +81,36 @@ export function DocumentJobsProvider({
           }
 
           prevById.current.set(d.id, nextState)
+        }
+
+        if (prevOcrState !== nextOcrState) {
+          if (
+            prevOcrState &&
+            isOcrPending(prevOcrState) &&
+            nextOcrState === "done"
+          ) {
+            toast.success(`OCR ready: ${d.title}`, {
+              id: `dococr:${d.id}:done`,
+            })
+          }
+
+          if (
+            prevOcrState &&
+            isOcrPending(prevOcrState) &&
+            nextOcrState === "failed"
+          ) {
+            toast.error(`OCR failed: ${d.title}`, {
+              id: `dococr:${d.id}:failed`,
+            })
+          }
+
+          if (!prevOcrState && nextOcrState === "queued") {
+            toast.message(`Making searchable: ${d.title}`, {
+              id: `dococr:${d.id}:queued`,
+            })
+          }
+
+          prevOcrById.current.set(d.id, nextOcrState)
         }
       }
 

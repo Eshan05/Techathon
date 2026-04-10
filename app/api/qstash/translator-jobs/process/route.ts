@@ -14,6 +14,7 @@ import {
   setTranslatorJobOutputChunk,
   setTranslatorJobSourceChunk,
   setTranslatorJobStatus,
+  type TranslatorInsight,
   type TranslatorJobStatus,
 } from "@/lib/qstash/translator-jobs"
 
@@ -161,43 +162,112 @@ async function translateChunk(opts: { text: string; targetLanguage: string }) {
   return (r.translated_text || "").trim()
 }
 
-async function analyzeChunkMarkdown(opts: {
+function normalizeInsightList(value: unknown, maxItems: number) {
+  if (!Array.isArray(value)) return [] as string[]
+  const out: string[] = []
+
+  for (const item of value) {
+    if (typeof item !== "string") continue
+    const trimmed = item.replace(/\s+/g, " ").trim()
+    if (!trimmed) continue
+    out.push(trimmed.slice(0, 220))
+    if (out.length >= maxItems) break
+  }
+
+  return out
+}
+
+function safeExtractJson(text: string) {
+  const trimmed = text.trim()
+  const start = trimmed.indexOf("{")
+  const end = trimmed.lastIndexOf("}")
+  if (start === -1 || end === -1 || end <= start) return null
+  return trimmed.slice(start, end + 1)
+}
+
+async function analyzeChunkInsight(opts: {
   translatedText: string
   targetLanguage: string
   stateCode?: string
-}) {
+  farmerContext?: TranslatorJobStatus["farmerContext"]
+}): Promise<TranslatorInsight | null> {
   if (!process.env.GROQ_API_KEY?.trim()) return null
 
   const profile = resolveChatProfile({ profileId: "kisan-vakil" })
   const model = getChatModel(profile)
 
   const stateHint = opts.stateCode
-    ? `\n\nState context: ${opts.stateCode}. If anything depends on state rules, say so plainly.`
+    ? `\nState context (may affect stamp duty, registration, land revenue rules): ${opts.stateCode}.`
+    : ""
+
+  const farmerHint = opts.farmerContext
+    ? `\nFarmer context: supportNeed=${opts.farmerContext.supportNeed ?? "unknown"}, state=${opts.farmerContext.state ?? "unknown"}, district=${opts.farmerContext.district ?? "unknown"}.`
     : ""
 
   const prompt =
-    "You are Kisan Vakil. Analyze ONLY the text below (it is one page/segment of a document).\n" +
-    "Write in simple farmer-friendly language. Keep it short.\n\n" +
-    "Return markdown with these headings:\n" +
-    "## What this part says (2 bullets)\n" +
-    "## Red flags (max 5 bullets)\n" +
-    "## What to verify (max 5 bullets)\n" +
-    "## What to do next (max 5 bullets)\n" +
-    "## Questions to ask (max 3 bullets)\n" +
+    "You are Kisan Vakil. Analyze ONLY the text below (one page/segment).\n" +
+    "Write in very simple farmer-friendly language. Keep items short.\n" +
+    "Return ONLY valid JSON (no markdown, no code fences) with exactly these keys:\n" +
+    "{\n" +
+    '  "normal": string[],\n' +
+    '  "redFlags": string[],\n' +
+    '  "warnings": string[],\n' +
+    '  "clarify": string[],\n' +
+    '  "contextualBad": string[]\n' +
+    "}\n" +
+    "\nRules:\n" +
+    "- normal: what this part means (<=3 bullets)\n" +
+    "- redFlags: risky / fraud / hidden obligations (<=6 bullets)\n" +
+    "- warnings: important checks before signing (<=6 bullets)\n" +
+    "- clarify: questions to ask / missing info (<=6 bullets)\n" +
+    "- contextualBad: risks specific to the farmer/state context (<=6 bullets). If a point depends on state rules, say 'state-dependent'.\n" +
     stateHint +
+    farmerHint +
     "\n\nText:\n" +
-    `\"\"\"${opts.translatedText.slice(0, 5000)}\"\"\"`
+    `\"\"\"${opts.translatedText.slice(0, 5500)}\"\"\"`
 
   const result = await generateText({
     model,
     system: profile.system,
     messages: [{ role: "user", content: prompt }],
     temperature: profile.temperature,
-    maxOutputTokens: 700,
+    maxOutputTokens: 550,
     providerOptions: profile.providerOptions,
   })
 
-  return result.text.trim()
+  const raw = result.text.trim()
+  const jsonSlice = safeExtractJson(raw)
+
+  if (!jsonSlice) {
+    return {
+      normal: [],
+      redFlags: [],
+      warnings: [],
+      clarify: [],
+      contextualBad: [],
+      raw,
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(jsonSlice) as any
+    return {
+      normal: normalizeInsightList(parsed?.normal, 3),
+      redFlags: normalizeInsightList(parsed?.redFlags, 6),
+      warnings: normalizeInsightList(parsed?.warnings, 6),
+      clarify: normalizeInsightList(parsed?.clarify, 6),
+      contextualBad: normalizeInsightList(parsed?.contextualBad, 6),
+    }
+  } catch {
+    return {
+      normal: [],
+      redFlags: [],
+      warnings: [],
+      clarify: [],
+      contextualBad: [],
+      raw,
+    }
+  }
 }
 
 async function publishNextChunk(opts: {
@@ -466,10 +536,11 @@ export async function POST(request: Request) {
       existingOut ?? (await getTranslatorJobOutputChunk(userId, jobId, index))
 
     if (!alreadyInsight && out?.text?.trim()) {
-      const insight = await analyzeChunkMarkdown({
+      const insight = await analyzeChunkInsight({
         translatedText: out.text,
         targetLanguage: job.targetLanguage,
         stateCode: job.stateCode,
+        farmerContext: job.farmerContext,
       })
 
       if (insight) {

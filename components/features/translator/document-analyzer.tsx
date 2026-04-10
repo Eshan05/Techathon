@@ -4,11 +4,16 @@ import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Download,
   FileText,
   Loader2,
   ScanLine,
   ShieldAlert,
   Sparkles,
+  X,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -34,6 +39,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
@@ -163,7 +176,29 @@ type TranslatorChunk = {
   text: string
 }
 
-type TranslatorInsightChunk = { index: number; markdown: string }
+type TranslatorInsight = {
+  normal: string[]
+  redFlags: string[]
+  warnings: string[]
+  clarify: string[]
+  contextualBad: string[]
+  raw?: string
+}
+
+type TranslatorInsightChunk = { index: number; insight: TranslatorInsight }
+
+type AnalyzerDocument = {
+  id: string
+  file: File
+  name: string
+  mimeType: string
+  jobId: string | null
+  after: number
+  status: TranslatorJobStatus | null
+  chunks: TranslatorChunk[]
+  insights: TranslatorInsightChunk[]
+  synthesis: string
+}
 
 type TranslatorJobPollResponse = {
   data: {
@@ -176,6 +211,34 @@ type TranslatorJobPollResponse = {
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
+}
+
+function safeFileBase(name: string) {
+  const base = name.replace(/\.[^/.]+$/, "")
+  return (
+    base
+      .replace(/[^a-zA-Z0-9-_ ]+/g, "")
+      .trim()
+      .slice(0, 60) || "document"
+  )
+}
+
+function downloadTextFile(opts: {
+  filename: string
+  content: string
+  mime?: string
+}) {
+  const blob = new Blob([opts.content], {
+    type: opts.mime || "text/plain;charset=utf-8",
+  })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = opts.filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }
 
 function isRetryableUploadError(err: unknown) {
@@ -211,6 +274,31 @@ function buildCombinedTranslation(chunks: TranslatorChunk[]) {
     .trim()
 }
 
+function insightToMarkdown(insight: TranslatorInsight) {
+  const lines: string[] = []
+
+  const section = (title: string, items: string[]) => {
+    if (!items?.length) return
+    lines.push(`## ${title}`)
+    for (const it of items) lines.push(`- ${it}`)
+    lines.push("")
+  }
+
+  section("Normal", insight.normal)
+  section("Red flags", insight.redFlags)
+  section("Warnings", insight.warnings)
+  section("Clarify", insight.clarify)
+  section("Contextually bad", insight.contextualBad)
+
+  if (insight.raw?.trim()) {
+    lines.push("## Raw")
+    lines.push(insight.raw.trim())
+    lines.push("")
+  }
+
+  return lines.join("\n").trim()
+}
+
 function buildCombinedInsights(opts: {
   insights: TranslatorInsightChunk[]
   chunks: TranslatorChunk[]
@@ -225,40 +313,74 @@ function buildCombinedInsights(opts: {
       const title = meta
         ? `### Page ${meta.pageNumber} (${meta.partNumber}/${meta.partCount})`
         : `### Part ${ins.index + 1}`
-      return [title, ins.markdown.trim()].filter(Boolean).join("\n\n")
+      return [title, insightToMarkdown(ins.insight)]
+        .filter(Boolean)
+        .join("\n\n")
     })
     .join("\n\n---\n\n")
     .trim()
 }
 
 export function DocumentAnalyzer() {
-  const [file, setFile] = React.useState<File | null>(null)
+  const [documents, setDocuments] = React.useState<AnalyzerDocument[]>([])
+  const [activeDocumentId, setActiveDocumentId] = React.useState<string | null>(
+    null
+  )
+
   const [language, setLanguage] = React.useState<string>("hi-IN")
   const [stateCode, setStateCode] = React.useState<string>("")
 
   const [isTranslating, setIsTranslating] = React.useState(false)
 
-  const [translatorJobId, setTranslatorJobId] = React.useState<string | null>(
-    null
+  const updateDocument = React.useCallback(
+    (id: string, updater: (doc: AnalyzerDocument) => AnalyzerDocument) => {
+      setDocuments((prev) => prev.map((d) => (d.id === id ? updater(d) : d)))
+    },
+    []
   )
-  const [translatorAfter, setTranslatorAfter] = React.useState<number>(-1)
-  const [translatorStatus, setTranslatorStatus] =
-    React.useState<TranslatorJobStatus | null>(null)
-  const [translatorChunks, setTranslatorChunks] = React.useState<
-    TranslatorChunk[]
-  >([])
-  const [translatorInsightChunks, setTranslatorInsightChunks] = React.useState<
-    TranslatorInsightChunk[]
-  >([])
-  const lastTranslatorStateRef = React.useRef<TranslatorJobState | null>(null)
 
-  const [translatedText, setTranslatedText] = React.useState<string | null>(
-    null
+  const activeDocument = React.useMemo(
+    () => documents.find((d) => d.id === activeDocumentId) ?? null,
+    [documents, activeDocumentId]
   )
+
+  const file = activeDocument?.file ?? null
+
+  const translatorJobId = activeDocument?.jobId ?? null
+  const translatorAfter = activeDocument?.after ?? -1
+  const translatorStatus = activeDocument?.status ?? null
+  const translatorChunks = activeDocument?.chunks ?? []
+  const translatorInsightChunks = activeDocument?.insights ?? []
+  const insights = activeDocument?.synthesis ?? ""
+
+  const lastTranslatorStateRef = React.useRef<
+    Record<string, TranslatorJobState | null>
+  >({})
+
+  const translatedText = React.useMemo(() => {
+    const combined = buildCombinedTranslation(translatorChunks)
+    return combined || null
+  }, [translatorChunks])
+
+  const chunkNotes = React.useMemo(() => {
+    if (!translatorInsightChunks.length) return ""
+    return buildCombinedInsights({
+      insights: translatorInsightChunks,
+      chunks: translatorChunks,
+    })
+  }, [translatorInsightChunks, translatorChunks])
 
   const [selectionText, setSelectionText] = React.useState<string>("")
   const [activeTab, setActiveTab] = React.useState<
-    "text" | "audio" | "insights" | "highlights"
+    | "text"
+    | "redflags"
+    | "warnings"
+    | "clarify"
+    | "context"
+    | "normal"
+    | "synthesis"
+    | "highlights"
+    | "audio"
   >("text")
 
   const [askDrawerOpen, setAskDrawerOpen] = React.useState(false)
@@ -268,13 +390,12 @@ export function DocumentAnalyzer() {
   const [customQuestion, setCustomQuestion] = React.useState("")
 
   const [isAnalyzing, setIsAnalyzing] = React.useState(false)
-  const [insights, setInsights] = React.useState<string>("")
 
   const translationContainerRef = React.useRef<HTMLDivElement>(null)
 
   const translatorJobQuery = useQuery({
-    queryKey: ["translator-job", translatorJobId],
-    enabled: !!translatorJobId,
+    queryKey: ["translator-job", activeDocumentId, translatorJobId],
+    enabled: !!translatorJobId && !!activeDocumentId,
     queryFn: async () => {
       const id = translatorJobId
       if (!id) throw new Error("Missing job id")
@@ -310,55 +431,51 @@ export function DocumentAnalyzer() {
 
   React.useEffect(() => {
     const payload = translatorJobQuery.data?.data
-    if (!payload) return
+    if (!payload || !activeDocumentId) return
 
-    setTranslatorStatus(payload.status)
-    setTranslatorAfter((prev) => Math.max(prev, payload.nextAfter ?? prev))
+    updateDocument(activeDocumentId, (doc) => {
+      const next: AnalyzerDocument = {
+        ...doc,
+        status: payload.status,
+        after: Math.max(doc.after, payload.nextAfter ?? doc.after),
+      }
 
-    if (payload.chunks?.length) {
-      setTranslatorChunks((prev) => mergeChunks(prev, payload.chunks))
-    }
+      if (payload.chunks?.length) {
+        next.chunks = mergeChunks(doc.chunks, payload.chunks)
+      }
 
-    if (payload.insights?.length) {
-      setTranslatorInsightChunks((prev) =>
-        mergeInsights(prev, payload.insights)
-      )
-    }
-  }, [translatorJobQuery.data])
+      if (payload.insights?.length) {
+        next.insights = mergeInsights(doc.insights, payload.insights)
+      }
 
-  React.useEffect(() => {
-    if (!translatorChunks.length) return
-
-    const combined = buildCombinedTranslation(translatorChunks)
-    setTranslatedText(combined || null)
-  }, [translatorChunks])
-
-  React.useEffect(() => {
-    if (!translatorInsightChunks.length) return
-
-    const combined = buildCombinedInsights({
-      insights: translatorInsightChunks,
-      chunks: translatorChunks,
+      return next
     })
-
-    setInsights(combined)
-  }, [translatorInsightChunks, translatorChunks])
+  }, [translatorJobQuery.data, activeDocumentId, updateDocument])
 
   React.useEffect(() => {
+    if (!activeDocumentId) return
+
     const state = translatorStatus?.state
     if (!state) return
 
-    if (lastTranslatorStateRef.current === state) return
-    lastTranslatorStateRef.current = state
+    if (lastTranslatorStateRef.current[activeDocumentId] === state) return
+    lastTranslatorStateRef.current[activeDocumentId] = state
+
+    const name = activeDocument?.name || "Document"
 
     if (state === "done") {
-      toast.success("Translation ready.")
+      toast.success(`Ready: ${name}`)
     }
 
     if (state === "failed") {
-      toast.error(translatorStatus?.message || "Translation failed")
+      toast.error(translatorStatus?.message || `Failed: ${name}`)
     }
-  }, [translatorStatus?.state, translatorStatus?.message])
+  }, [
+    activeDocument,
+    activeDocumentId,
+    translatorStatus?.state,
+    translatorStatus?.message,
+  ])
 
   const selectedSubdivision = React.useMemo(
     () => getIndianSubdivision(stateCode),
@@ -386,18 +503,55 @@ export function DocumentAnalyzer() {
     }))
   }, [paragraphs, summary])
 
+  const chunkMetaByIndex = React.useMemo(() => {
+    return new Map(translatorChunks.map((c) => [c.index, c] as const))
+  }, [translatorChunks])
+
+  const insightCounts = React.useMemo(() => {
+    const counts = {
+      redFlags: 0,
+      warnings: 0,
+      clarify: 0,
+      contextualBad: 0,
+      normal: 0,
+    }
+
+    for (const c of translatorInsightChunks) {
+      counts.redFlags += c.insight.redFlags?.length ?? 0
+      counts.warnings += c.insight.warnings?.length ?? 0
+      counts.clarify += c.insight.clarify?.length ?? 0
+      counts.contextualBad += c.insight.contextualBad?.length ?? 0
+      counts.normal += c.insight.normal?.length ?? 0
+    }
+
+    return counts
+  }, [translatorInsightChunks])
+
+  const activeIndex = React.useMemo(() => {
+    if (!activeDocumentId) return -1
+    return documents.findIndex((d) => d.id === activeDocumentId)
+  }, [documents, activeDocumentId])
+
+  const selectByOffset = React.useCallback(
+    (delta: number) => {
+      if (activeIndex === -1) return
+      const next = documents[activeIndex + delta]
+      if (!next) return
+      setActiveDocumentId(next.id)
+      setSelectionText("")
+      setAskAnswer("")
+      setCustomQuestion("")
+      setActiveTab("text")
+    },
+    [activeIndex, documents]
+  )
+
   const resetAll = React.useCallback(() => {
-    setFile(null)
+    setDocuments([])
+    setActiveDocumentId(null)
     setIsTranslating(false)
+    lastTranslatorStateRef.current = {}
 
-    setTranslatorJobId(null)
-    setTranslatorAfter(-1)
-    setTranslatorStatus(null)
-    setTranslatorChunks([])
-    setTranslatorInsightChunks([])
-    lastTranslatorStateRef.current = null
-
-    setTranslatedText(null)
     setSelectionText("")
     setAskDrawerOpen(false)
     setIsAskingAi(false)
@@ -405,26 +559,31 @@ export function DocumentAnalyzer() {
     setAskAnswer("")
     setCustomQuestion("")
     setIsAnalyzing(false)
-    setInsights("")
     setActiveTab("text")
   }, [])
 
   const handleDrop = React.useCallback((accepted: File[]) => {
-    const next = accepted?.[0] ?? null
-    setFile(next)
+    if (!accepted?.length) return
 
-    setTranslatorJobId(null)
-    setTranslatorAfter(-1)
-    setTranslatorStatus(null)
-    setTranslatorChunks([])
-    setTranslatorInsightChunks([])
-    lastTranslatorStateRef.current = null
+    const nextDocs: AnalyzerDocument[] = accepted.map((f) => ({
+      id: crypto.randomUUID(),
+      file: f,
+      name: f.name,
+      mimeType: f.type || "application/octet-stream",
+      jobId: null,
+      after: -1,
+      status: null,
+      chunks: [],
+      insights: [],
+      synthesis: "",
+    }))
 
-    setTranslatedText(null)
+    setDocuments((prev) => [...nextDocs, ...prev])
+    setActiveDocumentId(nextDocs[0]?.id ?? null)
+
     setSelectionText("")
     setAskAnswer("")
     setCustomQuestion("")
-    setInsights("")
     setActiveTab("text")
   }, [])
 
@@ -462,8 +621,8 @@ export function DocumentAnalyzer() {
   }, [])
 
   const handleTranslate = React.useCallback(async () => {
-    if (!file) {
-      toast.error("Please upload a document or image first.")
+    if (!activeDocumentId || !file) {
+      toast.error("Select a document first.")
       return
     }
 
@@ -472,17 +631,18 @@ export function DocumentAnalyzer() {
     try {
       setIsTranslating(true)
 
-      setTranslatorJobId(null)
-      setTranslatorAfter(-1)
-      setTranslatorStatus(null)
-      setTranslatorChunks([])
-      setTranslatorInsightChunks([])
-      lastTranslatorStateRef.current = null
+      updateDocument(activeDocumentId, (doc) => ({
+        ...doc,
+        jobId: null,
+        after: -1,
+        status: null,
+        chunks: [],
+        insights: [],
+        synthesis: "",
+      }))
 
-      setTranslatedText(null)
       setSelectionText("")
       setAskAnswer("")
-      setInsights("")
       setActiveTab("text")
 
       const maxAttempts = 3
@@ -508,9 +668,20 @@ export function DocumentAnalyzer() {
         | { url?: string; type?: string }
         | undefined
 
-      if (!uploaded?.url || !uploaded?.type) {
+      if (!uploaded?.url) {
         throw new Error("Upload failed: no file URL returned")
       }
+
+      if (!uploaded?.type) {
+        throw new Error("Upload failed: no mime type returned")
+      }
+
+      const { url: fileUrl, type: mimeType } = uploaded
+
+      updateDocument(activeDocumentId, (doc) => ({
+        ...doc,
+        mimeType,
+      }))
 
       toast.message("Queuing translation…", { id: toastId })
 
@@ -518,8 +689,8 @@ export function DocumentAnalyzer() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fileUrl: uploaded.url,
-          mimeType: uploaded.type,
+          fileUrl,
+          mimeType,
           targetLanguage: language,
           stateCode: stateCode || undefined,
         }),
@@ -534,7 +705,20 @@ export function DocumentAnalyzer() {
         throw new Error(data?.error || "Could not queue translation")
       }
 
-      setTranslatorJobId(data.data.jobId)
+      updateDocument(activeDocumentId, (doc) => ({
+        ...doc,
+        jobId: data.data?.jobId ?? null,
+        after: -1,
+        status: {
+          state: "queued",
+          stage: "extracting",
+          totalChunks: 0,
+          translatedChunks: 0,
+          analyzedChunks: 0,
+          message: "Queued",
+        },
+      }))
+
       toast.success("Queued — processing safely in the background.", {
         id: toastId,
       })
@@ -546,7 +730,7 @@ export function DocumentAnalyzer() {
     } finally {
       setIsTranslating(false)
     }
-  }, [file, language, stateCode])
+  }, [activeDocumentId, file, language, stateCode, updateDocument])
 
   const askOnText = React.useCallback(
     async (opts: {
@@ -657,7 +841,7 @@ export function DocumentAnalyzer() {
 
     try {
       setIsAnalyzing(true)
-      setActiveTab("insights")
+      setActiveTab("synthesis")
 
       const stateContext = selectedSubdivision
         ? `\n\nState context: ${selectedSubdivision.name} (${selectedSubdivision.code}). If any rule depends on state (e.g., stamp duty, land revenue code), explicitly say so.`
@@ -674,13 +858,6 @@ export function DocumentAnalyzer() {
         "6) Suggested next steps (max 6 bullets)\n" +
         "If you are unsure, say what information is missing." +
         stateContext
-
-      const chunkNotes = translatorInsightChunks.length
-        ? buildCombinedInsights({
-            insights: translatorInsightChunks,
-            chunks: translatorChunks,
-          })
-        : ""
 
       const corpus = chunkNotes
         ? chunkNotes
@@ -723,8 +900,13 @@ export function DocumentAnalyzer() {
         throw new Error(data?.error || "Could not analyze the document.")
       }
 
-      setInsights(data.text)
-      toast.success("Insights ready.")
+      if (activeDocumentId) {
+        updateDocument(activeDocumentId, (doc) => ({
+          ...doc,
+          synthesis: data.text,
+        }))
+      }
+      toast.success("Review ready.")
     } catch (error) {
       console.error(error)
       const message =
@@ -736,17 +918,141 @@ export function DocumentAnalyzer() {
       setIsAnalyzing(false)
     }
   }, [
+    activeDocumentId,
+    chunkNotes,
     language,
     selectedSubdivision,
     translatedText,
-    translatorChunks,
-    translatorInsightChunks,
+    updateDocument,
   ])
 
   const isJobActive =
-    !!translatorStatus &&
-    translatorStatus.state !== "done" &&
-    translatorStatus.state !== "failed"
+    !!translatorJobId &&
+    (translatorStatus?.state == null ||
+      (translatorStatus.state !== "done" &&
+        translatorStatus.state !== "failed"))
+
+  type InsightKind =
+    | "normal"
+    | "redFlags"
+    | "warnings"
+    | "clarify"
+    | "contextualBad"
+
+  const InsightTab = (props: {
+    kind: InsightKind
+    title: string
+    empty: string
+  }) => {
+    if (!translatedText) {
+      return (
+        <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+          Translate the document first.
+        </div>
+      )
+    }
+
+    const sections = translatorInsightChunks
+      .slice()
+      .sort((a, b) => a.index - b.index)
+      .map((chunk) => {
+        const meta = chunkMetaByIndex.get(chunk.index)
+        const label = meta
+          ? `Page ${meta.pageNumber} (${meta.partNumber}/${meta.partCount})`
+          : `Part ${chunk.index + 1}`
+
+        const items = (chunk.insight[props.kind] ?? []).filter(Boolean)
+        return { chunk, label, items }
+      })
+      .filter((x) => x.items.length > 0)
+
+    const copyAll = () => {
+      const lines: string[] = []
+      for (const s of sections) {
+        lines.push(`### ${s.label}`)
+        for (const it of s.items) lines.push(`- ${it}`)
+        lines.push("")
+      }
+
+      const out = lines.join("\n").trim()
+      navigator.clipboard
+        .writeText(out)
+        .then(() => toast.success("Copied."))
+        .catch(() => toast.error("Could not copy."))
+    }
+
+    return (
+      <div className="space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-sm font-semibold">{props.title}</div>
+            <div className="text-xs text-muted-foreground">
+              Chunk-by-chunk. Updates as we process.
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full gap-2 sm:w-auto"
+            onClick={copyAll}
+            disabled={sections.length === 0}
+          >
+            <Copy className="size-4" />
+            Copy
+          </Button>
+        </div>
+
+        {isJobActive && translatorStatus?.totalChunks ? (
+          <div className="rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Loader2 className="size-3.5 animate-spin" />
+              Checking {translatorStatus.analyzedChunks}/
+              {Math.max(1, translatorStatus.totalChunks)} chunks…
+            </div>
+          </div>
+        ) : null}
+
+        {sections.length ? (
+          <div className="space-y-3">
+            {sections.map((s) => (
+              <div
+                key={s.chunk.index}
+                className="rounded-xl border bg-background"
+              >
+                <div className="border-b px-3 py-2 text-xs font-semibold text-muted-foreground">
+                  {s.label}
+                </div>
+                <div className="p-3">
+                  <ul className="list-disc space-y-1 pl-5 text-sm text-foreground/90">
+                    {s.items.map((it, idx) => (
+                      <li key={idx} className="break-words">
+                        {it}
+                      </li>
+                    ))}
+                  </ul>
+
+                  {s.chunk.insight.raw?.trim() ? (
+                    <details className="mt-3">
+                      <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">
+                        Raw model output
+                      </summary>
+                      <pre className="mt-2 rounded-lg border bg-muted/20 p-3 text-xs leading-relaxed whitespace-pre-wrap">
+                        {s.chunk.insight.raw}
+                      </pre>
+                    </details>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+            {isJobActive ? "Still checking…" : props.empty}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -773,14 +1079,88 @@ export function DocumentAnalyzer() {
           <Button
             variant="outline"
             onClick={resetAll}
-            disabled={!file && !translatedText}
+            disabled={documents.length === 0}
             className="w-full sm:w-auto"
           >
             Reset
           </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full gap-2 sm:w-auto"
+                disabled={
+                  !translatedText && !translatorChunks.length && !chunkNotes
+                }
+              >
+                <Download className="size-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Export</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={!translatedText}
+                onClick={() => {
+                  const base = safeFileBase(activeDocument?.name || "document")
+                  downloadTextFile({
+                    filename: `${base}.translation.txt`,
+                    content: translatedText || "",
+                  })
+                }}
+              >
+                Translation (.txt)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!chunkNotes}
+                onClick={() => {
+                  const base = safeFileBase(activeDocument?.name || "document")
+                  downloadTextFile({
+                    filename: `${base}.review.md`,
+                    content: chunkNotes || "",
+                    mime: "text/markdown;charset=utf-8",
+                  })
+                }}
+              >
+                Chunk review (.md)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!translatorInsightChunks.length}
+                onClick={() => {
+                  const base = safeFileBase(activeDocument?.name || "document")
+                  downloadTextFile({
+                    filename: `${base}.review.json`,
+                    content: JSON.stringify(translatorInsightChunks, null, 2),
+                    mime: "application/json;charset=utf-8",
+                  })
+                }}
+              >
+                Chunk review (.json)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={!insights.trim()}
+                onClick={() => {
+                  const base = safeFileBase(activeDocument?.name || "document")
+                  downloadTextFile({
+                    filename: `${base}.synthesis.md`,
+                    content: insights || "",
+                    mime: "text/markdown;charset=utf-8",
+                  })
+                }}
+              >
+                Whole-paper synthesis (.md)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             onClick={handleTranslate}
-            disabled={!file || isTranslating || isJobActive}
+            disabled={
+              !activeDocumentId || !file || isTranslating || isJobActive
+            }
             className="w-full gap-2 sm:w-auto"
           >
             {isTranslating || isJobActive ? (
@@ -836,8 +1216,8 @@ export function DocumentAnalyzer() {
             </div>
 
             <Dropzone
-              src={file ? [file] : undefined}
-              maxFiles={1}
+              src={documents.length ? documents.map((d) => d.file) : undefined}
+              maxFiles={10}
               maxSize={10 * 1024 * 1024}
               accept={{
                 "application/pdf": [".pdf"],
@@ -846,19 +1226,125 @@ export function DocumentAnalyzer() {
               onDrop={(accepted) => handleDrop(accepted)}
               className={cn(
                 "rounded-lg border-dashed bg-muted/20",
-                file && "bg-emerald-50/40 dark:bg-emerald-950/10"
+                documents.length && "bg-emerald-50/40 dark:bg-emerald-950/10"
               )}
             >
               <DropzoneEmptyState />
               <DropzoneContent className="px-2" />
             </Dropzone>
 
-            {file && (
-              <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                <FileText className="size-3.5" />
-                <span className="truncate">{file.name}</span>
+            {documents.length ? (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-semibold text-muted-foreground">
+                    Documents
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => {
+                      setDocuments([])
+                      setActiveDocumentId(null)
+                      setSelectionText("")
+                      setAskAnswer("")
+                      setCustomQuestion("")
+                      setActiveTab("text")
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </div>
+
+                <ScrollArea className="max-h-44 pr-2">
+                  <div className="space-y-1.5 pr-2">
+                    {documents.map((d) => {
+                      const isActive = d.id === activeDocumentId
+                      const st = d.status?.state
+                      const label = st ? st : d.jobId ? "queued" : "ready"
+
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveDocumentId(d.id)
+                            setSelectionText("")
+                            setAskAnswer("")
+                            setCustomQuestion("")
+                            setActiveTab("text")
+                          }}
+                          className={cn(
+                            "w-full rounded-lg border px-2 py-2 text-left",
+                            "transition-colors hover:bg-muted/20",
+                            isActive
+                              ? "border-orange-200 bg-orange-50/60 dark:border-orange-900/40 dark:bg-orange-950/20"
+                              : "bg-background"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="truncate text-xs font-semibold">
+                                {d.name}
+                              </div>
+                              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                                {label}
+                                {d.status?.totalChunks ? (
+                                  <>
+                                    {" "}
+                                    • {d.status.translatedChunks}/
+                                    {Math.max(1, d.status.totalChunks)}
+                                  </>
+                                ) : null}
+                              </div>
+                            </div>
+                            {isActive ? (
+                              <span className="shrink-0 rounded-md border bg-background px-1.5 py-0.5 text-[10px] font-semibold">
+                                Active
+                              </span>
+                            ) : null}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </ScrollArea>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-2"
+                    onClick={() => selectByOffset(-1)}
+                    disabled={activeIndex <= 0}
+                  >
+                    <ChevronLeft className="size-4" />
+                    Prev
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-2"
+                    onClick={() => selectByOffset(1)}
+                    disabled={
+                      activeIndex === -1 || activeIndex >= documents.length - 1
+                    }
+                  >
+                    Next
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+
+                {activeDocument ? (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <FileText className="size-3.5" />
+                    <span className="truncate">
+                      Selected: {activeDocument.name}
+                    </span>
+                  </div>
+                ) : null}
               </div>
-            )}
+            ) : null}
           </section>
 
           <section className="rounded-xl border bg-background p-3 sm:p-4">
@@ -982,6 +1468,73 @@ export function DocumentAnalyzer() {
                     Translation
                   </TabsTrigger>
                   <TabsTrigger
+                    value="redflags"
+                    className="flex-none px-2 text-xs sm:text-sm"
+                    disabled={!translatedText}
+                  >
+                    Red flags
+                    {insightCounts.redFlags ? (
+                      <span className="ml-2 rounded-full border bg-muted/30 px-1.5 py-0.5 text-[10px]">
+                        {insightCounts.redFlags}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="warnings"
+                    className="flex-none px-2 text-xs sm:text-sm"
+                    disabled={!translatedText}
+                  >
+                    Warnings
+                    {insightCounts.warnings ? (
+                      <span className="ml-2 rounded-full border bg-muted/30 px-1.5 py-0.5 text-[10px]">
+                        {insightCounts.warnings}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="clarify"
+                    className="flex-none px-2 text-xs sm:text-sm"
+                    disabled={!translatedText}
+                  >
+                    Clarify
+                    {insightCounts.clarify ? (
+                      <span className="ml-2 rounded-full border bg-muted/30 px-1.5 py-0.5 text-[10px]">
+                        {insightCounts.clarify}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="context"
+                    className="flex-none px-2 text-xs sm:text-sm"
+                    disabled={!translatedText}
+                  >
+                    Context
+                    {insightCounts.contextualBad ? (
+                      <span className="ml-2 rounded-full border bg-muted/30 px-1.5 py-0.5 text-[10px]">
+                        {insightCounts.contextualBad}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="normal"
+                    className="flex-none px-2 text-xs sm:text-sm"
+                    disabled={!translatedText}
+                  >
+                    Normal
+                    {insightCounts.normal ? (
+                      <span className="ml-2 rounded-full border bg-muted/30 px-1.5 py-0.5 text-[10px]">
+                        {insightCounts.normal}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="synthesis"
+                    className="flex-none px-2 text-xs sm:text-sm"
+                    disabled={!translatedText}
+                  >
+                    Synthesis
+                  </TabsTrigger>
+                  <TabsTrigger
                     value="highlights"
                     className="flex-none px-2 text-xs sm:text-sm"
                     disabled={!translatedText}
@@ -994,13 +1547,6 @@ export function DocumentAnalyzer() {
                     disabled={!translatedText}
                   >
                     Audio
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="insights"
-                    className="flex-none px-2 text-xs sm:text-sm"
-                    disabled={!translatedText}
-                  >
-                    Insights
                   </TabsTrigger>
                 </TabsList>
               </div>
@@ -1020,34 +1566,65 @@ export function DocumentAnalyzer() {
                       </div>
                     ) : (
                       <>
-                        Upload a file and hit{" "}
-                        <span className="font-medium">Translate</span>. Then
-                        select a risky line to ask Kisan Vakil for an
-                        explanation.
+                        Upload files, select one, then hit{" "}
+                        <span className="font-medium">Translate</span>. Select a
+                        risky line to ask Kisan Vakil for an explanation.
                       </>
                     )}
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <div
+                      ref={translationContainerRef}
+                      onMouseUp={() =>
+                        window.requestAnimationFrame(updateSelection)
+                      }
+                      onKeyUp={() =>
+                        window.requestAnimationFrame(updateSelection)
+                      }
+                      onTouchEnd={() =>
+                        window.requestAnimationFrame(updateSelection)
+                      }
                       className={cn(
-                        "rounded-lg border bg-muted/20 p-3",
+                        "max-h-[55vh] overflow-auto rounded-lg border bg-background px-3 py-3 sm:max-h-[62vh] sm:px-4",
                         selectionText
-                          ? "border-orange-200 bg-orange-50/60 dark:border-orange-900/40 dark:bg-orange-950/20"
+                          ? "ring-1 ring-orange-200 dark:ring-orange-900/40"
+                          : ""
+                      )}
+                    >
+                      <div className="prose prose-slate prose-p:mb-4 prose-p:text-sm prose-p:leading-relaxed last:prose-p:mb-0 dark:prose-invert max-w-none select-text">
+                        {highlightedParagraphs.map((p, index) => (
+                          <p
+                            key={index}
+                            id={`p-${index}`}
+                            className="break-words"
+                          >
+                            {renderWithHighlights(p.text, p.ranges)}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Floating / contextual toolbar */}
+                    <div
+                      className={cn(
+                        "sticky bottom-0 z-10 -mx-3 rounded-b-xl border-t bg-background/80 px-3 py-3 backdrop-blur sm:-mx-4 sm:px-4",
+                        selectionText
+                          ? "bg-orange-50/70 dark:bg-orange-950/20"
                           : ""
                       )}
                     >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-xs font-semibold tracking-wide text-muted-foreground">
                           {selectionText
-                            ? "Selected text — quick actions"
+                            ? "Selected line — quick actions"
                             : "Select a line to unlock quick actions"}
                         </div>
                         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                           <Button
                             size="sm"
                             variant="outline"
-                            className="w-full sm:w-auto"
+                            className="w-full gap-2 sm:w-auto"
                             onClick={() =>
                               navigator.clipboard
                                 .writeText(translatedText)
@@ -1057,6 +1634,7 @@ export function DocumentAnalyzer() {
                                 .catch(() => toast.error("Could not copy."))
                             }
                           >
+                            <Copy className="size-4" />
                             Copy all
                           </Button>
                           <Button
@@ -1072,16 +1650,31 @@ export function DocumentAnalyzer() {
                             }}
                             disabled={!selectionText}
                           >
+                            <Copy className="size-4" />
                             Copy line
                           </Button>
                         </div>
                       </div>
 
-                      {selectionText && (
-                        <div className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-                          {selectionText}
+                      {selectionText ? (
+                        <div className="mt-2 flex items-start justify-between gap-2">
+                          <div className="line-clamp-2 text-xs text-muted-foreground">
+                            {selectionText}
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => {
+                              setSelectionText("")
+                              window.getSelection()?.removeAllRanges?.()
+                            }}
+                            title="Clear selection"
+                          >
+                            <X className="size-4" />
+                          </Button>
                         </div>
-                      )}
+                      ) : null}
 
                       <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                         <Button
@@ -1116,32 +1709,131 @@ export function DocumentAnalyzer() {
                         </Button>
                       </div>
                     </div>
+                  </div>
+                )}
+              </TabsContent>
 
-                    <div
-                      ref={translationContainerRef}
-                      onMouseUp={() =>
-                        window.requestAnimationFrame(updateSelection)
-                      }
-                      onKeyUp={() =>
-                        window.requestAnimationFrame(updateSelection)
-                      }
-                      onTouchEnd={() =>
-                        window.requestAnimationFrame(updateSelection)
-                      }
-                      className="max-h-[55vh] overflow-auto rounded-lg border bg-background px-3 py-3 sm:max-h-[62vh] sm:px-4"
-                    >
-                      <div className="prose prose-slate prose-p:mb-4 prose-p:text-sm prose-p:leading-relaxed last:prose-p:mb-0 dark:prose-invert max-w-none select-text">
-                        {highlightedParagraphs.map((p, index) => (
-                          <p
-                            key={index}
-                            id={`p-${index}`}
-                            className="break-words"
-                          >
-                            {renderWithHighlights(p.text, p.ranges)}
-                          </p>
-                        ))}
+              <TabsContent value="redflags" className="m-0 p-3 sm:p-4">
+                <InsightTab
+                  kind="redFlags"
+                  title="Red flags"
+                  empty="No red flags found in the analyzed chunks."
+                />
+              </TabsContent>
+
+              <TabsContent value="warnings" className="m-0 p-3 sm:p-4">
+                <InsightTab
+                  kind="warnings"
+                  title="Warnings"
+                  empty="No warnings found in the analyzed chunks."
+                />
+              </TabsContent>
+
+              <TabsContent value="clarify" className="m-0 p-3 sm:p-4">
+                <InsightTab
+                  kind="clarify"
+                  title="Clarify"
+                  empty="No clarification items found in the analyzed chunks."
+                />
+              </TabsContent>
+
+              <TabsContent value="context" className="m-0 p-3 sm:p-4">
+                <InsightTab
+                  kind="contextualBad"
+                  title="Contextually bad"
+                  empty="No state/profile-specific risks found yet."
+                />
+              </TabsContent>
+
+              <TabsContent value="normal" className="m-0 p-3 sm:p-4">
+                <InsightTab
+                  kind="normal"
+                  title="Normal (what it says)"
+                  empty="No notes yet."
+                />
+              </TabsContent>
+
+              <TabsContent value="synthesis" className="m-0 p-3 sm:p-4">
+                {!translatedText ? (
+                  <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+                    Translate the document first.
+                  </div>
+                ) : insights ? (
+                  <div className="space-y-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="text-sm font-semibold">
+                          Whole-paper synthesis
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Consolidated summary + red-flag review.
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full gap-2 sm:w-auto"
+                          onClick={() =>
+                            navigator.clipboard
+                              .writeText(insights)
+                              .then(() => toast.success("Copied."))
+                              .catch(() => toast.error("Could not copy."))
+                          }
+                        >
+                          <Copy className="size-4" />
+                          Copy
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="w-full gap-2 sm:w-auto"
+                          onClick={analyzeFullDocument}
+                          disabled={isAnalyzing || isJobActive}
+                        >
+                          {isAnalyzing ? (
+                            <>
+                              <Loader2 className="size-4 animate-spin" />
+                              Synthesizing…
+                            </>
+                          ) : (
+                            <>
+                              <ShieldAlert className="size-4" />
+                              Re-run
+                            </>
+                          )}
+                        </Button>
                       </div>
                     </div>
+                    <div className="rounded-lg border bg-muted/20 p-4">
+                      <pre className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                        {insights}
+                      </pre>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+                      {isJobActive
+                        ? "Chunk-by-chunk checks will improve the synthesis as we process."
+                        : "Click 'Synthesize whole paper' on the left to generate a consolidated review."}
+                    </div>
+                    <Button
+                      className="w-full gap-2 sm:w-auto"
+                      onClick={analyzeFullDocument}
+                      disabled={!translatedText || isAnalyzing || isJobActive}
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <Loader2 className="size-4 animate-spin" />
+                          Synthesizing…
+                        </>
+                      ) : (
+                        <>
+                          <ShieldAlert className="size-4" />
+                          Synthesize whole paper
+                        </>
+                      )}
+                    </Button>
                   </div>
                 )}
               </TabsContent>
@@ -1369,51 +2061,6 @@ export function DocumentAnalyzer() {
                 ) : (
                   <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
                     Translate the document first.
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="insights" className="m-0 p-3 sm:p-4">
-                {!translatedText ? (
-                  <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
-                    Translate the document first.
-                  </div>
-                ) : insights ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-sm font-semibold">Insights</div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          navigator.clipboard
-                            .writeText(insights)
-                            .then(() => toast.success("Copied insights."))
-                            .catch(() => toast.error("Could not copy."))
-                        }
-                      >
-                        Copy
-                      </Button>
-                    </div>
-                    <div className="rounded-lg border bg-muted/20 p-4">
-                      <pre className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-                        {insights}
-                      </pre>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
-                    {isJobActive ? (
-                      "Chunk-by-chunk checks will appear here as we process the document."
-                    ) : (
-                      <>
-                        Click{" "}
-                        <span className="font-medium">
-                          Synthesize whole paper
-                        </span>{" "}
-                        for a consolidated red-flag review.
-                      </>
-                    )}
                   </div>
                 )}
               </TabsContent>

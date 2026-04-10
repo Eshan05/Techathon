@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
+import { eq } from "drizzle-orm"
 
 import { auth } from "@/lib/auth/auth"
+import { ensureFarmerProfilesSchema } from "@/lib/db/compat"
 import { siteConfig } from "@/lib/site"
 import { getQstashClient } from "@/lib/qstash/client"
+import { db } from "@/lib/db/db"
+import { farmerProfiles } from "@/lib/db/schema"
 import {
   setTranslatorJobStatus,
   type TranslatorJobStatus,
@@ -43,6 +47,12 @@ export async function POST(req: Request) {
   const userId = session.user.id
   const jobId = crypto.randomUUID()
 
+  await ensureFarmerProfilesSchema()
+
+  const profile = await db.query.farmerProfiles.findFirst({
+    where: eq(farmerProfiles.userId, userId),
+  })
+
   const now = Date.now()
   const status: TranslatorJobStatus = {
     state: "queued",
@@ -53,6 +63,15 @@ export async function POST(req: Request) {
     mimeType: parsed.data.mimeType,
     targetLanguage: parsed.data.targetLanguage,
     stateCode: parsed.data.stateCode?.trim() || undefined,
+    farmerContext: profile
+      ? {
+          supportNeed: profile.supportNeed ?? null,
+          state: profile.state ?? null,
+          district: profile.district ?? null,
+          tehsil: profile.tehsil ?? null,
+          village: profile.village ?? null,
+        }
+      : undefined,
     totalChunks: 0,
     translatedChunks: 0,
     analyzedChunks: 0,

@@ -125,6 +125,9 @@ export const uploadRouter = {
             ...row,
             createdAt: row.createdAt.toISOString(),
             issuedAt: row.issuedAt ? row.issuedAt.toISOString() : null,
+            ocrExtractedAt: row.ocrExtractedAt
+              ? row.ocrExtractedAt.toISOString()
+              : null,
             job,
           }
 
