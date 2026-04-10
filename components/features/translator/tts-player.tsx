@@ -21,6 +21,7 @@ import { toast } from "sonner"
 interface TTSPlayerProps {
   text: string
   language: string
+  segmentSeconds?: number
 }
 
 function formatTime(seconds: number) {
@@ -41,7 +42,52 @@ function base64ToWavBlob(base64Data: string) {
   return new Blob([byteArray], { type: "audio/wav" })
 }
 
-export function TTSPlayer({ text, language }: TTSPlayerProps) {
+function stripHtmlToText(input: string) {
+  return (input || "")
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/(p|div|tr|li|h\d)>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t\f\v]+/g, " ")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+}
+
+function chunkTextByMaxChars(input: string, maxChars: number) {
+  const text = (input || "").trim()
+  if (!text) return [] as string[]
+  if (text.length <= maxChars) return [text]
+
+  const tokens = text.split(/\s+/).filter(Boolean)
+  const chunks: string[] = []
+  let current = ""
+
+  for (const token of tokens) {
+    const next = current ? `${current} ${token}` : token
+    if (next.length > maxChars && current) {
+      chunks.push(current)
+      current = token
+      continue
+    }
+    current = next
+  }
+
+  if (current) chunks.push(current)
+  return chunks
+}
+
+export function TTSPlayer({ text, language, segmentSeconds }: TTSPlayerProps) {
+  const secondsPerChunk = Math.max(30, Number(segmentSeconds) || 30)
+  const cleanText = stripHtmlToText(text)
+  const charsPerSecond = 25
+  const chunks = chunkTextByMaxChars(
+    cleanText,
+    Math.min(2400, secondsPerChunk * charsPerSecond)
+  )
+  const [chunkIndex, setChunkIndex] = useState(0)
+  const activeText = chunks[chunkIndex] || ""
+
   const [isPlaying, setIsPlaying] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [hasAudio, setHasAudio] = useState(false)
@@ -59,6 +105,11 @@ export function TTSPlayer({ text, language }: TTSPlayerProps) {
     null
   )
   const audioUrlRef = useRef<string | null>(null)
+  const generationIdRef = useRef(0)
+
+  useEffect(() => {
+    setChunkIndex(0)
+  }, [secondsPerChunk, cleanText])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -141,6 +192,7 @@ export function TTSPlayer({ text, language }: TTSPlayerProps) {
   }, [])
 
   useEffect(() => {
+    generationIdRef.current += 1
     setHasAudio(false)
     setIsReady(false)
     setIsPlaying(false)
@@ -158,7 +210,7 @@ export function TTSPlayer({ text, language }: TTSPlayerProps) {
       URL.revokeObjectURL(audioUrlRef.current)
       audioUrlRef.current = null
     }
-  }, [text, language])
+  }, [activeText, language])
 
   const handlePlayPause = async () => {
     const ws = wavesurferRef.current
@@ -174,9 +226,10 @@ export function TTSPlayer({ text, language }: TTSPlayerProps) {
       return
     }
 
-    if (!text) return
+    if (!activeText) return
 
     try {
+      const requestId = (generationIdRef.current += 1)
       setIsLoading(true)
       setError(null)
 
@@ -184,10 +237,12 @@ export function TTSPlayer({ text, language }: TTSPlayerProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text,
+          text: activeText,
           language,
         }),
       })
+
+      if (requestId !== generationIdRef.current) return
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null)
@@ -196,6 +251,8 @@ export function TTSPlayer({ text, language }: TTSPlayerProps) {
 
       const data = await response.json()
       if (!data.audio) throw new Error("No audio data received")
+
+      if (requestId !== generationIdRef.current) return
 
       const audioBlob = base64ToWavBlob(data.audio)
       const audioUrl = URL.createObjectURL(audioBlob)
@@ -300,7 +357,9 @@ export function TTSPlayer({ text, language }: TTSPlayerProps) {
           {formatTime(currentTime)}
         </span>
         <span className="text-xs font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-500">
-          Voice Waveform
+          {chunks.length > 1
+            ? `Chunk ${chunkIndex + 1}/${chunks.length}`
+            : "Voice Waveform"}
         </span>
         <span className="text-xs font-semibold text-slate-500 tabular-nums dark:text-slate-400">
           {formatTime(duration)}
@@ -349,7 +408,7 @@ export function TTSPlayer({ text, language }: TTSPlayerProps) {
           <Button
             onClick={handlePlayPause}
             size="icon"
-            disabled={isLoading || !text}
+            disabled={isLoading || !activeText}
             className={`rounded-xl ${isPlaying ? "bg-orange-500 hover:bg-orange-600" : "bg-emerald-600 hover:bg-emerald-700"}`}
           >
             {isLoading ? (
@@ -438,6 +497,32 @@ export function TTSPlayer({ text, language }: TTSPlayerProps) {
           </Button>
         </div>
       </div>
+
+      {chunks.length > 1 ? (
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isLoading || chunkIndex === 0}
+            onClick={() => setChunkIndex((i) => Math.max(0, i - 1))}
+          >
+            Prev chunk
+          </Button>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Read length: ~{secondsPerChunk}s
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isLoading || chunkIndex >= chunks.length - 1}
+            onClick={() =>
+              setChunkIndex((i) => Math.min(chunks.length - 1, i + 1))
+            }
+          >
+            Next chunk
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

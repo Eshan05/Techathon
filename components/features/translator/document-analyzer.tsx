@@ -52,6 +52,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import { TTSPlayer } from "@/components/features/translator/tts-player"
+import { SafeHtml } from "@/components/derived/safe-html"
 import { uploadFiles } from "@/utils/uploadthing"
 import {
   getHighlightRangesForText,
@@ -382,6 +383,10 @@ function buildCombinedInsights(opts: {
     .trim()
 }
 
+function containsHtmlTable(input: string) {
+  return /<(table|thead|tbody|tfoot|tr|th|td)[\s>]/i.test(input)
+}
+
 export function DocumentAnalyzer() {
   const [documents, setDocuments] = React.useState<AnalyzerDocument[]>([])
   const [activeDocumentId, setActiveDocumentId] = React.useState<string | null>(
@@ -389,6 +394,7 @@ export function DocumentAnalyzer() {
   )
 
   const [language, setLanguage] = React.useState<string>("hi-IN")
+  const [ttsSegmentSeconds, setTtsSegmentSeconds] = React.useState<number>(30)
   const [stateCode, setStateCode] = React.useState<string>("")
   const ocrPreference = "sarvam" as const
 
@@ -1504,6 +1510,27 @@ export function DocumentAnalyzer() {
           </section>
 
           <section className="rounded-xl border bg-background p-3 sm:p-4">
+            <div className="mb-3 text-sm font-semibold">Read aloud length</div>
+            <Select
+              value={String(ttsSegmentSeconds)}
+              onValueChange={(v) => setTtsSegmentSeconds(Number(v))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select read length" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="30">30 seconds (recommended)</SelectItem>
+                <SelectItem value="60">60 seconds</SelectItem>
+                <SelectItem value="90">90 seconds</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="mt-2 text-xs text-muted-foreground">
+              This controls the audio chunk size. You can keep listening with
+              next/prev chunks.
+            </p>
+          </section>
+
+          <section className="rounded-xl border bg-background p-3 sm:p-4">
             <div className="mb-3 text-sm font-semibold">OCR provider</div>
             <Select value={ocrPreference}>
               <SelectTrigger>
@@ -1759,7 +1786,19 @@ export function DocumentAnalyzer() {
                             ) : null}
 
                             {page.parts.map((part) => {
-                              const paras = (part.text || "")
+                              const raw = part.text || ""
+
+                              if (containsHtmlTable(raw)) {
+                                return (
+                                  <SafeHtml
+                                    key={`part-${part.index}`}
+                                    html={raw}
+                                    className="text-sm leading-relaxed text-foreground/90"
+                                  />
+                                )
+                              }
+
+                              const paras = raw
                                 .split(/\n+/)
                                 .map((p) => p.trim())
                                 .filter(Boolean)
@@ -2236,7 +2275,11 @@ export function DocumentAnalyzer() {
 
               <TabsContent value="audio" className="m-0 p-3 sm:p-4">
                 {translatedText ? (
-                  <TTSPlayer text={translatedText} language={language} />
+                  <TTSPlayer
+                    text={translatedText}
+                    language={language}
+                    segmentSeconds={ttsSegmentSeconds}
+                  />
                 ) : (
                   <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
                     Translate the document first.
