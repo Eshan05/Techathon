@@ -80,6 +80,8 @@ We are using:
 18. React PDF for PDF viewing and annotation
 19. React email and components / renderer for building email templates using Tailwind
 20. Use Gemini 2.5 Flash (Google API and free) or Whisper Large v3 (Groq API) (https://console.groq.com/docs/rate-limits)
+21. For local development in AI specifically use AI SDK Ollama
+22. We are also using QStash
 
 ABSOLUTELY NON-NEGOTIABLE:
 1. Brilliant, non-generic designs
