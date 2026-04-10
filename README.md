@@ -1,4 +1,4 @@
-# Acquittance
+# Kisan Vakil
 
 Next.js (App Router) + shadcn/ui + Better Auth (v1.6).
 

@@ -41,7 +41,7 @@ A lightweight “vault index” for uploaded items (UploadThing), optionally lin
 Suggested fields:
 - `id` (PK, UUID)
 - `userId` (FK → `users.id`)
-- `title`, `kind` (e.g. `sale-deed`, `khata`, `court-notice`, `receipt`)
+- `title`, `kind` (e.g. `sale-deed`, `khata`, `court-notice`, `id-proof`)
 - `uploadthingKey`, `url`
 - `mimeType`, `sizeBytes`, `sha256`
 - `landParcelId` (nullable FK → `land_parcels.id`)

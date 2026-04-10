@@ -10,7 +10,6 @@ Core features:
 * Scheme checker to find eligible government subsidies, loans, and grants
 * Step-by-step claim filing for crop insurance, compensation, and disaster relief
 * Complaint and grievance filing for electricity, irrigation, procurement, or revenue issues
-* Expert chat with lawyers, agronomists, and policy advisors
 * Voice search and voice notes for low-literacy users
 * Regional language support with dialect-friendly UI
 * Offline mode for storing documents and drafts when network is weak
@@ -93,3 +92,4 @@ ABSOLUTELY NON-NEGOTIABLE:
 5. Make heavy use of flyout or such components, don't just link to pages. The app should feel like a single page experience, with modals, flyouts, and such. Use drawers, dialogs, grouped input, accordions and so on where you can.
 6. Everything must be free and not require a credit card
 7. Always do `pnpm i` before `pnpm dev`. After any changes are done always make sure to do `lint:ts` and `format`.
+8. Card-y UI should not be the first thing you go for, unless necessary
