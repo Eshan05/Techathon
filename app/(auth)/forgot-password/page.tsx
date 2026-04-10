@@ -1,10 +1,7 @@
-import { AuthShell } from "@/components/features/auth/auth-shell";
-import ForgotPassword from "@/components/features/auth/forgot-password";
+import { redirect } from "next/navigation"
+
+import { defaultLocale } from "@/i18n/routing"
 
 export default function Page() {
-  return (
-    <AuthShell>
-      <ForgotPassword />
-    </AuthShell>
-  );
+  redirect(`/${defaultLocale}/forgot-password`)
 }

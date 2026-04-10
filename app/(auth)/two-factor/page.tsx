@@ -1,10 +1,7 @@
-import { AuthShell } from "@/components/features/auth/auth-shell";
-import TwoFactor from "@/components/features/auth/two-factor";
+import { redirect } from "next/navigation"
+
+import { defaultLocale } from "@/i18n/routing"
 
 export default function Page() {
-  return (
-    <AuthShell>
-      <TwoFactor />
-    </AuthShell>
-  );
+  redirect(`/${defaultLocale}/two-factor`)
 }

@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
-import { z } from "zod";
+import { NextResponse } from "next/server"
+import { and, eq } from "drizzle-orm"
+import { z } from "zod"
 
-import { auth } from "@/lib/auth/auth";
-import { db } from "@/lib/db/db";
-import { landParcels } from "@/lib/db/schema";
+import { auth } from "@/lib/auth/auth"
+import { db } from "@/lib/db/db"
+import { landParcels } from "@/lib/db/schema"
 
-export const runtime = "nodejs";
+export const runtime = "nodejs"
 
 const landParcelCreateSchema = z
   .object({
@@ -26,38 +26,38 @@ const landParcelCreateSchema = z
 
     notes: z.string().trim().max(2000).nullable().optional(),
   })
-  .strict();
+  .strict()
 
 export async function GET(request: Request) {
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await auth.api.getSession({ headers: request.headers })
   if (!session?.session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const rows = await db.query.landParcels.findMany({
     where: eq(landParcels.userId, session.user.id),
     orderBy: (t, { desc }) => [desc(t.updatedAt)],
-  });
+  })
 
-  return NextResponse.json({ data: rows });
+  return NextResponse.json({ data: rows })
 }
 
 export async function POST(request: Request) {
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await auth.api.getSession({ headers: request.headers })
   if (!session?.session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const body = await request.json().catch(() => null);
-  const parsed = landParcelCreateSchema.safeParse(body);
+  const body = await request.json().catch(() => null)
+  const parsed = landParcelCreateSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid request", details: parsed.error.flatten() },
       { status: 400 }
-    );
+    )
   }
 
-  const id = crypto.randomUUID();
+  const id = crypto.randomUUID()
 
   const values = {
     id,
@@ -73,13 +73,13 @@ export async function POST(request: Request) {
     ownerName: parsed.data.ownerName ?? null,
     ownershipShare: parsed.data.ownershipShare ?? null,
     notes: parsed.data.notes ?? null,
-  };
+  }
 
-  await db.insert(landParcels).values(values);
+  await db.insert(landParcels).values(values)
 
   const row = await db.query.landParcels.findFirst({
     where: and(eq(landParcels.id, id), eq(landParcels.userId, session.user.id)),
-  });
+  })
 
-  return NextResponse.json({ data: row }, { status: 201 });
+  return NextResponse.json({ data: row }, { status: 201 })
 }

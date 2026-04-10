@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
-import { z } from "zod";
+import { NextResponse } from "next/server"
+import { and, eq } from "drizzle-orm"
+import { z } from "zod"
 
-import { auth } from "@/lib/auth/auth";
-import { db } from "@/lib/db/db";
-import { documents } from "@/lib/db/schema";
+import { auth } from "@/lib/auth/auth"
+import { db } from "@/lib/db/db"
+import { documents } from "@/lib/db/schema"
 
-export const runtime = "nodejs";
+export const runtime = "nodejs"
 
 const documentPatchSchema = z
   .object({
@@ -23,56 +23,56 @@ const documentPatchSchema = z
     landParcelId: z.string().trim().min(1).max(64).nullable().optional(),
     issuedAt: z.number().int().nonnegative().nullable().optional(),
   })
-  .strict();
+  .strict()
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await auth.api.getSession({ headers: request.headers })
   if (!session?.session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const { id } = await params;
+  const { id } = await params
 
   const row = await db.query.documents.findFirst({
     where: and(eq(documents.id, id), eq(documents.userId, session.user.id)),
-  });
+  })
 
   if (!row) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
-  return NextResponse.json({ data: row });
+  return NextResponse.json({ data: row })
 }
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await auth.api.getSession({ headers: request.headers })
   if (!session?.session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const { id } = await params;
+  const { id } = await params
 
-  const body = await request.json().catch(() => null);
-  const parsed = documentPatchSchema.safeParse(body);
+  const body = await request.json().catch(() => null)
+  const parsed = documentPatchSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid request", details: parsed.error.flatten() },
       { status: 400 }
-    );
+    )
   }
 
   const existing = await db.query.documents.findFirst({
     where: and(eq(documents.id, id), eq(documents.userId, session.user.id)),
-  });
+  })
 
   if (!existing) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
   const next = {
@@ -84,12 +84,15 @@ export async function PATCH(
         : parsed.data.uploadthingKey,
     url: parsed.data.url === undefined ? existing.url : parsed.data.url,
     mimeType:
-      parsed.data.mimeType === undefined ? existing.mimeType : parsed.data.mimeType,
+      parsed.data.mimeType === undefined
+        ? existing.mimeType
+        : parsed.data.mimeType,
     sizeBytes:
       parsed.data.sizeBytes === undefined
         ? existing.sizeBytes
         : parsed.data.sizeBytes,
-    sha256: parsed.data.sha256 === undefined ? existing.sha256 : parsed.data.sha256,
+    sha256:
+      parsed.data.sha256 === undefined ? existing.sha256 : parsed.data.sha256,
     landParcelId:
       parsed.data.landParcelId === undefined
         ? existing.landParcelId
@@ -100,42 +103,42 @@ export async function PATCH(
         : parsed.data.issuedAt === null
           ? null
           : new Date(parsed.data.issuedAt),
-  };
+  }
 
   await db
     .update(documents)
     .set(next)
-    .where(and(eq(documents.id, id), eq(documents.userId, session.user.id)));
+    .where(and(eq(documents.id, id), eq(documents.userId, session.user.id)))
 
   const row = await db.query.documents.findFirst({
     where: and(eq(documents.id, id), eq(documents.userId, session.user.id)),
-  });
+  })
 
-  return NextResponse.json({ data: row });
+  return NextResponse.json({ data: row })
 }
 
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await auth.api.getSession({ headers: request.headers })
   if (!session?.session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const { id } = await params;
+  const { id } = await params
 
   const row = await db.query.documents.findFirst({
     where: and(eq(documents.id, id), eq(documents.userId, session.user.id)),
-  });
+  })
 
   if (!row) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
   await db
     .delete(documents)
-    .where(and(eq(documents.id, id), eq(documents.userId, session.user.id)));
+    .where(and(eq(documents.id, id), eq(documents.userId, session.user.id)))
 
-  return NextResponse.json({ data: { id } });
+  return NextResponse.json({ data: { id } })
 }

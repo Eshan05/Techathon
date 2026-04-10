@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
-import { z } from "zod";
+import { NextResponse } from "next/server"
+import { and, eq } from "drizzle-orm"
+import { z } from "zod"
 
-import { auth } from "@/lib/auth/auth";
-import { db } from "@/lib/db/db";
-import { documents } from "@/lib/db/schema";
+import { auth } from "@/lib/auth/auth"
+import { db } from "@/lib/db/db"
+import { documents } from "@/lib/db/schema"
 
-export const runtime = "nodejs";
+export const runtime = "nodejs"
 
 const documentCreateSchema = z
   .object({
@@ -23,38 +23,38 @@ const documentCreateSchema = z
     landParcelId: z.string().trim().min(1).max(64).nullable().optional(),
     issuedAt: z.number().int().nonnegative().nullable().optional(),
   })
-  .strict();
+  .strict()
 
 export async function GET(request: Request) {
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await auth.api.getSession({ headers: request.headers })
   if (!session?.session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const rows = await db.query.documents.findMany({
     where: eq(documents.userId, session.user.id),
     orderBy: (t, { desc }) => [desc(t.createdAt)],
-  });
+  })
 
-  return NextResponse.json({ data: rows });
+  return NextResponse.json({ data: rows })
 }
 
 export async function POST(request: Request) {
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await auth.api.getSession({ headers: request.headers })
   if (!session?.session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const body = await request.json().catch(() => null);
-  const parsed = documentCreateSchema.safeParse(body);
+  const body = await request.json().catch(() => null)
+  const parsed = documentCreateSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid request", details: parsed.error.flatten() },
       { status: 400 }
-    );
+    )
   }
 
-  const id = crypto.randomUUID();
+  const id = crypto.randomUUID()
 
   const values = {
     id,
@@ -71,13 +71,13 @@ export async function POST(request: Request) {
       parsed.data.issuedAt === null || parsed.data.issuedAt === undefined
         ? null
         : new Date(parsed.data.issuedAt),
-  };
+  }
 
-  await db.insert(documents).values(values);
+  await db.insert(documents).values(values)
 
   const row = await db.query.documents.findFirst({
     where: and(eq(documents.id, id), eq(documents.userId, session.user.id)),
-  });
+  })
 
-  return NextResponse.json({ data: row }, { status: 201 });
+  return NextResponse.json({ data: row }, { status: 201 })
 }

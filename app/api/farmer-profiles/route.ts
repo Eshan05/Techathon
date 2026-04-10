@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { NextResponse } from "next/server"
+import { z } from "zod"
+import { eq } from "drizzle-orm"
 
-import { auth } from "@/lib/auth/auth";
-import { db } from "@/lib/db/db";
-import { farmerProfiles } from "@/lib/db/schema";
+import { auth } from "@/lib/auth/auth"
+import { db } from "@/lib/db/db"
+import { farmerProfiles } from "@/lib/db/schema"
 
-export const runtime = "nodejs";
+export const runtime = "nodejs"
 
 const upsertFarmerProfileSchema = z
   .object({
@@ -19,17 +19,17 @@ const upsertFarmerProfileSchema = z
     tehsil: z.string().trim().min(1).max(120).nullable().optional(),
     village: z.string().trim().min(1).max(120).nullable().optional(),
   })
-  .strict();
+  .strict()
 
 export async function GET(request: Request) {
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await auth.api.getSession({ headers: request.headers })
   if (!session?.session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const row = await db.query.farmerProfiles.findFirst({
     where: eq(farmerProfiles.userId, session.user.id),
-  });
+  })
 
   const fallback = {
     userId: session.user.id,
@@ -40,24 +40,24 @@ export async function GET(request: Request) {
     district: null,
     tehsil: null,
     village: null,
-  };
+  }
 
-  return NextResponse.json({ data: row ?? fallback });
+  return NextResponse.json({ data: row ?? fallback })
 }
 
 export async function PUT(request: Request) {
-  const session = await auth.api.getSession({ headers: request.headers });
+  const session = await auth.api.getSession({ headers: request.headers })
   if (!session?.session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const body = await request.json().catch(() => null);
-  const parsed = upsertFarmerProfileSchema.safeParse(body);
+  const body = await request.json().catch(() => null)
+  const parsed = upsertFarmerProfileSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid request", details: parsed.error.flatten() },
       { status: 400 }
-    );
+    )
   }
 
   const values = {
@@ -70,19 +70,16 @@ export async function PUT(request: Request) {
     tehsil: parsed.data.tehsil ?? null,
     village: parsed.data.village ?? null,
     updatedAt: new Date(),
-  };
+  }
 
-  await db
-    .insert(farmerProfiles)
-    .values(values)
-    .onConflictDoUpdate({
-      target: farmerProfiles.userId,
-      set: values,
-    });
+  await db.insert(farmerProfiles).values(values).onConflictDoUpdate({
+    target: farmerProfiles.userId,
+    set: values,
+  })
 
   const row = await db.query.farmerProfiles.findFirst({
     where: eq(farmerProfiles.userId, session.user.id),
-  });
+  })
 
-  return NextResponse.json({ data: row });
+  return NextResponse.json({ data: row })
 }

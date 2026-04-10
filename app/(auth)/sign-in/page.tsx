@@ -1,14 +1,7 @@
-import { Suspense } from "react";
+import { redirect } from "next/navigation"
 
-import { AuthShell } from "@/components/features/auth/auth-shell";
-import SignIn from "@/components/features/auth/sign-in";
+import { defaultLocale } from "@/i18n/routing"
 
 export default function Page() {
-  return (
-    <AuthShell>
-      <Suspense fallback={<div aria-hidden className="h-8" />}>
-        <SignIn />
-      </Suspense>
-    </AuthShell>
-  );
+  redirect(`/${defaultLocale}/sign-in`)
 }
