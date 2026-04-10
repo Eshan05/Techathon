@@ -198,8 +198,8 @@ export default function EditProfileItem({ session }: { session: any }) {
 
           <Form {...form} aria-busy={isProfileLoading}>
             <form onSubmit={form.handleSubmit(onSave)} className="grid gap-4">
-              <Tabs defaultValue="basics" className="w-full flex flex-col">
-                <TabsList className="w-full flex justify-start gap-1 bg-transparent">
+              <Tabs defaultValue="basics" className="flex w-full flex-col">
+                <TabsList className="flex w-full justify-start gap-1 bg-transparent">
                   <TabsTrigger value="basics" className="gap-2">
                     <UserRound className="size-4" />
                     Basics
