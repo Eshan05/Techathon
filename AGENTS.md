@@ -95,3 +95,75 @@ ABSOLUTELY NON-NEGOTIABLE:
 5. Kisan Credit Card (KCC)
 6. Kisan Pehchan Patra (Farmer ID)
 7. PM Dhan-Dhaanya Krishi Yojana
+
+## Steps for Fetching Details or the documents reqquired for the Land laws 
+
+🔹 1. How to Get Satbara Online (Very Common)
+Step-by-step:
+Go to official portal
+👉 https://mahabhumi.gov.in/
+
+(“Mahabhulekh” website)
+Select:
+District
+Taluka
+Village
+Choose search method:
+Survey Number / Gat Number
+OR Owner Name
+Click Search
+View your 7/12 record
+Click Download / Print
+
+👉 This is informational copy (not digitally signed)
+
+🔹 2. Get Digitally Signed Satbara (Official Copy)
+
+For legal use (loan, court, etc.):
+
+Go to: https://cscservices.mahaonline.gov.in/Dashboard/Login.aspx
+
+(Portal by MahaOnline)
+Create/Login account
+Search service: “Digitally Signed 7/12”
+Enter:
+District, Taluka, Village
+Survey/Gat number
+Pay fee (~₹15–₹30)
+Download digitally signed PDF
+🔹 3. Offline Method (Talathi Office)
+
+If online not working:
+
+Visit local Talathi office
+Give:
+Survey number OR owner name
+Request 7/12 extract
+Pay small fee
+Get stamped copy
+🔹 4. How to Update / Change Satbara (Important Process)
+
+If you want to change ownership or details, you need mutation (Ferfar):
+
+Steps:
+Apply for mutation at Talathi office
+Submit documents:
+Sale deed / inheritance proof
+ID proof
+Application form
+Entry created in record (Mutation Entry No.)
+Verification by revenue officer
+Public notice period (objections if any)
+Final approval
+Satbara gets updated with new owner/details
+🔹 5. Track Mutation Status
+Go to Mahabhulekh portal
+Select “Mutation Status”
+Enter mutation number
+⏱️ Time Required
+Online download → instant
+Mutation update → 15–30 days (can vary)
+⚠️ Important Points
+7/12 is mainly for agricultural land
+Always use digitally signed version for legal work
+Check for loan entries (encumbrances) before buying land
