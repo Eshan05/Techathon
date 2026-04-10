@@ -119,7 +119,9 @@ export const onboarding = sqliteTable(
     identityDocUrl: text("identity_doc_url"),
     identityUploadthingKey: text("identity_uploadthing_key"),
     identityStatus: text("identity_status").default("pending"), // "pending" | "verified" | "rejected"
-    identityVerifiedAt: integer("identity_verified_at", { mode: "timestamp_ms" }),
+    identityVerifiedAt: integer("identity_verified_at", {
+      mode: "timestamp_ms",
+    }),
 
     // Step 2: Land Record
     landDocUrl: text("land_doc_url"),
