@@ -18,6 +18,8 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { toUserMessage } from "@/lib/errors"
+
 interface TTSPlayerProps {
   text: string
   language: string
@@ -272,10 +274,13 @@ export function TTSPlayer({ text, language, segmentSeconds }: TTSPlayerProps) {
       await ws.play()
     } catch (error) {
       console.error(error)
-      const message =
-        error instanceof Error ? error.message : "Could not read text aloud."
-      setError(message)
-      toast.error(message)
+      const msg = toUserMessage(error, {
+        fallbackTitle: "Couldn’t read this aloud right now",
+        fallbackDescription: "Please try again.",
+        context: "tts.generate",
+      })
+      setError(msg.title)
+      toast.error(msg.title, { description: msg.description })
     } finally {
       setIsLoading(false)
     }

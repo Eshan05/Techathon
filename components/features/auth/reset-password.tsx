@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { ArrowLeft, EyeIcon, EyeOffIcon, KeyIcon, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
+import { toUserMessage } from "@/lib/errors"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -60,7 +61,11 @@ export default function ResetPassword() {
       })
 
       if (res?.error) {
-        toast.error(res.error.message || t("resetFailed"))
+        const msg = toUserMessage(res.error, {
+          fallbackTitle: t("resetFailed"),
+          context: "auth.resetPassword",
+        })
+        toast.error(msg.title, { description: msg.description })
         return
       }
 

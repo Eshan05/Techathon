@@ -7,6 +7,7 @@ import { db } from "@/lib/db/db"
 import { documentOcrChunks, documents } from "@/lib/db/schema"
 import { getQstashSigningKeys } from "@/lib/qstash/keys"
 import { setDocumentOcrJobStatus } from "@/lib/qstash/document-ocr-jobs"
+import { toUserMessage } from "@/lib/errors"
 
 import { extractTextWithSarvamDocumentIntelligence } from "@/lib/ai/sarvam-document-intelligence"
 import {
@@ -367,13 +368,23 @@ export async function POST(request: Request) {
   } catch (e) {
     console.error(e)
 
+    const msg = toUserMessage(e, {
+      fallbackTitle: "OCR failed",
+      fallbackDescription: "Please try again.",
+      context: "queue.documentOcrJobs",
+      status: 500,
+    })
+
     await setDocumentOcrJobStatus(userId, documentId, {
       state: "failed",
       updatedAt: Date.now(),
       messageId,
-      message: e instanceof Error ? e.message : "OCR failed",
+      message: msg.title,
     })
 
-    return NextResponse.json({ error: "OCR failed" }, { status: 500 })
+    return NextResponse.json(
+      { error: msg.title, description: msg.description, code: msg.code },
+      { status: 500 }
+    )
   }
 }

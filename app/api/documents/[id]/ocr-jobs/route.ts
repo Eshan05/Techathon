@@ -7,6 +7,7 @@ import { documents } from "@/lib/db/schema"
 import { getQstashClient } from "@/lib/qstash/client"
 import { setDocumentOcrJobStatus } from "@/lib/qstash/document-ocr-jobs"
 import { siteConfig } from "@/lib/site"
+import { toUserMessage } from "@/lib/errors"
 
 export const runtime = "nodejs"
 
@@ -65,16 +66,28 @@ export async function POST(
   } catch (e) {
     console.error(e)
 
+    const msg = toUserMessage(e, {
+      fallbackTitle: "Couldn’t start OCR for this document",
+      fallbackDescription: "Please try again.",
+      context: "api.documents.ocrJobs",
+      status: 500,
+    })
+
     const job = {
       state: "failed" as const,
       updatedAt: Date.now(),
-      message: e instanceof Error ? e.message : "Failed to queue",
+      message: msg.title,
     }
 
     await setDocumentOcrJobStatus(session.user.id, id, job)
 
     return NextResponse.json(
-      { error: "Failed to queue", data: { job } },
+      {
+        error: msg.title,
+        description: msg.description,
+        code: msg.code,
+        data: { job },
+      },
       { status: 500 }
     )
   }

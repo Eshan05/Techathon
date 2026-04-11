@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { toUserMessage } from "@/lib/errors"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -198,15 +199,23 @@ export default function SignIn() {
                           },
                           onError(ctx) {
                             setLoadingAction(null)
-                            toast.error(
-                              ctx?.error?.message || t("signInFailed")
-                            )
+                            const msg = toUserMessage(ctx?.error ?? ctx, {
+                              fallbackTitle: t("signInFailed"),
+                              context: "auth.signIn.email",
+                            })
+                            toast.error(msg.title, {
+                              description: msg.description,
+                            })
                           },
                         }
                       )
                     } catch (error) {
                       setLoadingAction(null)
-                      if (error instanceof Error) toast.error(error.message)
+                      const msg = toUserMessage(error, {
+                        fallbackTitle: t("signInFailed"),
+                        context: "auth.signIn.email",
+                      })
+                      toast.error(msg.title, { description: msg.description })
                     }
                   })
                 }}
@@ -247,13 +256,23 @@ export default function SignIn() {
                         },
                         onError(ctx) {
                           setLoadingAction(null)
-                          toast.error(ctx?.error?.message || t("passkeyFailed"))
+                          const msg = toUserMessage(ctx?.error ?? ctx, {
+                            fallbackTitle: t("passkeyFailed"),
+                            context: "auth.signIn.passkey",
+                          })
+                          toast.error(msg.title, {
+                            description: msg.description,
+                          })
                         },
                       },
                     })
                   } catch (error) {
                     setLoadingAction(null)
-                    if (error instanceof Error) toast.error(error.message)
+                    const msg = toUserMessage(error, {
+                      fallbackTitle: t("passkeyFailed"),
+                      context: "auth.signIn.passkey",
+                    })
+                    toast.error(msg.title, { description: msg.description })
                   }
                 }}
               >
@@ -286,7 +305,11 @@ export default function SignIn() {
                     setLoadingAction(null)
                   } catch (error) {
                     setLoadingAction(null)
-                    if (error instanceof Error) toast.error(error.message)
+                    const msg = toUserMessage(error, {
+                      fallbackTitle: "Login failed",
+                      context: "auth.signIn.social",
+                    })
+                    toast.error(msg.title, { description: msg.description })
                   }
                 }}
               >

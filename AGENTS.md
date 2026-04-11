@@ -95,3 +95,8 @@ ABSOLUTELY NON-NEGOTIABLE:
 5. Kisan Credit Card (KCC)
 6. Kisan Pehchan Patra (Farmer ID)
 7. PM Dhan-Dhaanya Krishi Yojana
+
+# TECHNICAL NOTES
+
+1. Everything should be edge friendly
+2. We are deploying on vercel

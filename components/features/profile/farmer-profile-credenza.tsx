@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useTranslations } from "next-intl"
 import { toast } from "sonner"
+import { toUserMessage } from "@/lib/errors"
 import {
   Leaf,
   FileText,
@@ -265,7 +266,11 @@ export function FarmerProfileCredenza({
       toast.success(t("saved"))
       setOpen(false)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t("saveFailed"))
+      const msg = toUserMessage(error, {
+        fallbackTitle: t("saveFailed"),
+        context: "profile.save",
+      })
+      toast.error(msg.title, { description: msg.description })
     } finally {
       setSaving(false)
     }

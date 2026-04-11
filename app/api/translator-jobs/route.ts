@@ -8,6 +8,7 @@ import { siteConfig } from "@/lib/site"
 import { getQstashClient } from "@/lib/qstash/client"
 import { db } from "@/lib/db/db"
 import { farmerProfiles } from "@/lib/db/schema"
+import { toUserMessage } from "@/lib/errors"
 import {
   setTranslatorJobInsightChunk,
   setTranslatorJobOutputChunk,
@@ -590,7 +591,16 @@ export async function POST(req: Request) {
     await setTranslatorJobStatus(userId, jobId, status)
   } catch (e) {
     if (e instanceof TranslatorJobsStoreMisconfiguredError) {
-      return NextResponse.json({ error: e.message }, { status: 500 })
+      const msg = toUserMessage(e, {
+        fallbackTitle: "This service isn’t available right now.",
+        fallbackDescription: "Please try again later.",
+        context: "api.translatorJobs.store",
+        status: 500,
+      })
+      return NextResponse.json(
+        { error: msg.title, description: msg.description, code: msg.code },
+        { status: 500 }
+      )
     }
     throw e
   }
@@ -612,16 +622,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ data: { jobId } })
     } catch (e) {
       console.error(e)
+      const msg = toUserMessage(e, {
+        fallbackTitle: "Couldn’t process that document",
+        fallbackDescription: "Please try again.",
+        context: "api.translatorJobs.inline",
+        status: 500,
+      })
       await setTranslatorJobStatus(userId, jobId, {
         ...status,
         state: "failed",
         stage: "extracting",
         updatedAt: Date.now(),
-        message: e instanceof Error ? e.message : "Inline processing failed",
+        message: msg.title,
       })
 
       return NextResponse.json(
-        { error: e instanceof Error ? e.message : "Inline processing failed" },
+        { error: msg.title, description: msg.description, code: msg.code },
         { status: 500 }
       )
     }
@@ -643,12 +659,18 @@ export async function POST(req: Request) {
       baseStatus: status,
     }).catch(async (e) => {
       console.error(e)
+      const msg = toUserMessage(e, {
+        fallbackTitle: "Couldn’t process that document",
+        fallbackDescription: "Please try again.",
+        context: "api.translatorJobs.local",
+        status: 500,
+      })
       await setTranslatorJobStatus(userId, jobId, {
         ...status,
         state: "failed",
         stage: "extracting",
         updatedAt: Date.now(),
-        message: e instanceof Error ? e.message : "Local processing failed",
+        message: msg.title,
       })
     })
 
@@ -658,10 +680,11 @@ export async function POST(req: Request) {
   if (!qstash) {
     return NextResponse.json(
       {
-        error:
-          "QStash is not configured (missing QSTASH_TOKEN). In production, set QSTASH_TOKEN. In dev, set NEXT_PUBLIC_BASE_URL to a public tunnel URL or use local mode.",
+        error: "This service isn’t available right now.",
+        description: "Please try again later.",
+        code: "SERVICE_UNAVAILABLE",
       },
-      { status: 500 }
+      { status: 503 }
     )
   }
 
@@ -681,18 +704,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ data: { jobId } })
   } catch (e) {
     console.error(e)
+    const msg = toUserMessage(e, {
+      fallbackTitle: "Couldn’t start the translation job",
+      fallbackDescription: "Please try again.",
+      context: "api.translatorJobs.queue",
+      status: 502,
+    })
     await setTranslatorJobStatus(userId, jobId, {
       ...status,
       state: "failed",
       updatedAt: Date.now(),
-      message:
-        e instanceof Error
-          ? e.message
-          : "Could not queue processing (QStash publish failed)",
+      message: msg.title,
     })
 
     return NextResponse.json(
-      { error: "Could not queue processing" },
+      { error: msg.title, description: msg.description, code: msg.code },
       { status: 502 }
     )
   }

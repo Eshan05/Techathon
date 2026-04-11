@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Fingerprint } from "lucide-react"
 import { toast } from "sonner"
+import { toUserMessage } from "@/lib/errors"
 import { authClient as client } from "@/lib/auth-client"
 import { Loader2 } from "lucide-react"
 
@@ -30,7 +31,11 @@ export function AddPasskeyInline() {
     setIsLoading(true)
     const res = await client.passkey.addPasskey({ name: passkeyName })
     if (res?.error) {
-      toast.error(res.error.message)
+      const msg = toUserMessage(res.error, {
+        fallbackTitle: "Couldn’t add the passkey",
+        context: "auth.passkeys.add",
+      })
+      toast.error(msg.title, { description: msg.description })
     } else {
       setIsOpen(false)
       toast.success("Passkey added successfully. You can now use it to login.")
@@ -125,7 +130,11 @@ export function PasskeysPanel({ className }: { className?: string }) {
                       id: pk.id,
                     })
                     if (res?.error) {
-                      toast.error(res.error.message)
+                      const msg = toUserMessage(res.error, {
+                        fallbackTitle: "Couldn’t delete the passkey",
+                        context: "auth.passkeys.delete",
+                      })
+                      toast.error(msg.title, { description: msg.description })
                     } else {
                       toast.success("Passkey deleted")
                       try {

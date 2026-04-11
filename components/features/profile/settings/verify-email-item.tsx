@@ -5,6 +5,7 @@ import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { BadgeCheck } from "lucide-react"
 import { authClient as client } from "@/lib/auth-client"
 import { toast } from "sonner"
+import { toUserMessage } from "@/lib/errors"
 
 export default function VerifyEmailItem({ email }: { email?: string }) {
   return (
@@ -19,13 +20,21 @@ export default function VerifyEmailItem({ email }: { email?: string }) {
                 toast.success("Verification email sent")
               },
               onError(ctx) {
-                toast.error(ctx.error.message)
+                const msg = toUserMessage(ctx?.error ?? ctx, {
+                  fallbackTitle: "Couldn’t send the verification email",
+                  context: "profile.verifyEmail",
+                })
+                toast.error(msg.title, { description: msg.description })
               },
             }
           )
         } catch (e) {
           console.error(e)
-          toast.error("Failed to send verification email")
+          const msg = toUserMessage(e, {
+            fallbackTitle: "Couldn’t send the verification email",
+            context: "profile.verifyEmail",
+          })
+          toast.error(msg.title, { description: msg.description })
         }
       }}
     >

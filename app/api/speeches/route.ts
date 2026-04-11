@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { SarvamAIClient } from "sarvamai"
 
+import { toUserMessage } from "@/lib/errors"
+
 const client = new SarvamAIClient({
   apiSubscriptionKey: process.env.SARVAM_API_KEY,
 })
@@ -51,8 +53,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ audio: base64Audio })
   } catch (error: any) {
     console.error("TTS error:", error)
+    const msg = toUserMessage(error, {
+      fallbackTitle: "Couldn’t generate audio right now",
+      fallbackDescription: "Please try again in a moment.",
+      context: "api.speeches",
+      status: 500,
+    })
     return NextResponse.json(
-      { error: error.message || "Something went wrong" },
+      { error: msg.title, description: msg.description, code: msg.code },
       { status: 500 }
     )
   }

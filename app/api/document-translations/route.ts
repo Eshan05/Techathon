@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { SarvamAIClient } from "sarvamai"
 
 import { extractTextWithSarvamDocumentIntelligence } from "@/lib/ai/sarvam-document-intelligence"
+import { toUserMessage } from "@/lib/errors"
 
 const client = new SarvamAIClient({
   apiSubscriptionKey: process.env.SARVAM_API_KEY,
@@ -163,8 +164,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ text: translatedText })
   } catch (error: any) {
     console.error("Translation error:", error)
+    const msg = toUserMessage(error, {
+      fallbackTitle: "Couldn’t translate that document",
+      fallbackDescription: "Try a clearer photo/PDF and retry.",
+      context: "api.documentTranslations",
+      status: 500,
+    })
     return NextResponse.json(
-      { error: error.message || "Something went wrong" },
+      { error: msg.title, description: msg.description, code: msg.code },
       { status: 500 }
     )
   }

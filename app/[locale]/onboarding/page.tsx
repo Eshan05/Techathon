@@ -16,6 +16,7 @@ import {
   Upload,
   User,
 } from "lucide-react"
+import { toast } from "sonner"
 import { Link } from "@/i18n/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -34,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { toUserMessage } from "@/lib/errors"
 import { cn } from "@/lib/utils"
 
 type Step = 1 | 2 | 3 | 4
@@ -122,6 +124,7 @@ function readableSize(bytes: number) {
 export default function OnboardingPage() {
   const [step, setStep] = React.useState<Step>(1)
   const [selectedId, setSelectedId] = React.useState<string | null>(null)
+  const [isSavingProfile, setIsSavingProfile] = React.useState(false)
   const [profile, setProfile] = React.useState<ProfileBasics>({
     fullName: "",
     phone: "",
@@ -191,6 +194,56 @@ export default function OnboardingPage() {
       setStep((prev) => (prev + 1) as Step)
     }
   }
+
+  const persistProfileAndContinue = React.useCallback(async () => {
+    if (isSavingProfile) return
+
+    const nullIfEmpty = (value: string) => {
+      const trimmed = value.trim()
+      return trimmed ? trimmed : null
+    }
+
+    try {
+      setIsSavingProfile(true)
+
+      const response = await fetch("/api/farmer-profiles", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: profile.fullName.trim(),
+          phone: profile.phone.trim(),
+          preferredLanguage: profile.preferredLanguage,
+          supportNeed: profile.supportNeed,
+          trustedHelperName: nullIfEmpty(profile.trustedHelperName),
+          trustedHelperPhone: nullIfEmpty(profile.trustedHelperPhone),
+          state: nullIfEmpty(profile.state),
+          district: nullIfEmpty(profile.district),
+          tehsil: nullIfEmpty(profile.tehsil),
+          village: nullIfEmpty(profile.village),
+        }),
+      })
+
+      const json = (await response.json().catch(() => null)) as {
+        error?: string
+      } | null
+
+      if (!response.ok) {
+        throw new Error(json?.error || "Could not save profile")
+      }
+
+      setStep((prev) => (prev < 4 ? ((prev + 1) as Step) : prev))
+    } catch (error) {
+      console.error(error)
+      const msg = toUserMessage(error, {
+        fallbackTitle: "Couldn’t save your profile",
+        fallbackDescription: "Please try again.",
+        context: "onboarding.profile.save",
+      })
+      toast.error(msg.title, { description: msg.description })
+    } finally {
+      setIsSavingProfile(false)
+    }
+  }, [isSavingProfile, profile])
 
   const updateProfileField = React.useCallback(
     (key: keyof ProfileBasics, value: string) => {
@@ -422,7 +475,8 @@ export default function OnboardingPage() {
                   }))
                 }
                 canContinue={isProfileReady && identityRequiredDone}
-                onContinue={nextStep}
+                isContinuing={isSavingProfile}
+                onContinue={persistProfileAndContinue}
               />
             )}
 
@@ -492,6 +546,7 @@ function IdentityStep({
   onPrimaryIdChange,
   onAddressProofChange,
   canContinue,
+  isContinuing,
   onContinue,
 }: {
   profile: ProfileBasics
@@ -506,6 +561,7 @@ function IdentityStep({
   onPrimaryIdChange: (files: File[]) => void
   onAddressProofChange: (files: File[]) => void
   canContinue: boolean
+  isContinuing: boolean
   onContinue: () => void
 }) {
   const readiness = [
@@ -784,11 +840,12 @@ function IdentityStep({
           <div className="flex justify-end pt-2">
             <Button
               size="lg"
-              disabled={!canContinue}
+              disabled={!canContinue || isContinuing}
               onClick={onContinue}
               className="h-11 gap-2 px-8"
             >
-              Continue <ChevronRight className="h-4 w-4" />
+              {isContinuing ? "Saving…" : "Continue"}{" "}
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </CardContent>

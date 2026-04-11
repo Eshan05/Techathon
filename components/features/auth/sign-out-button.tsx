@@ -6,6 +6,7 @@ import { LogOutIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { toUserMessage } from "@/lib/errors"
 import { signOut } from "@/lib/auth/auth-client"
 
 export function SignOutButton() {
@@ -20,7 +21,11 @@ export function SignOutButton() {
       onClick={async () => {
         const { error } = await signOut()
         if (error) {
-          toast.error(error.message || "Sign out failed")
+          const msg = toUserMessage(error, {
+            fallbackTitle: "Sign out failed",
+            context: "auth.signOut",
+          })
+          toast.error(msg.title, { description: msg.description })
           return
         }
         toast.success("Signed out")

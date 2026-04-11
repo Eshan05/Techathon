@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import QRCodeStyling from "qr-code-styling"
 import { authClient as client } from "@/lib/auth-client"
 import { toast } from "sonner"
+import { toUserMessage } from "@/lib/errors"
 import { ShieldCheck, ShieldOff } from "lucide-react"
 
 export default function TwoFaToggleItem({ enabled }: { enabled?: boolean }) {
@@ -102,7 +103,11 @@ export default function TwoFaToggleItem({ enabled }: { enabled?: boolean }) {
                   password: twoFaPassword,
                   fetchOptions: {
                     onError(ctx) {
-                      toast.error(ctx.error.message)
+                      const msg = toUserMessage(ctx?.error ?? ctx, {
+                        fallbackTitle: "Couldn’t disable 2FA",
+                        context: "profile.2fa.disable",
+                      })
+                      toast.error(msg.title, { description: msg.description })
                     },
                     onSuccess() {
                       toast("2FA disabled successfully")
@@ -120,7 +125,11 @@ export default function TwoFaToggleItem({ enabled }: { enabled?: boolean }) {
                     onError(ctx) {
                       setIsPendingTwoFa(false)
                       setTwoFaPassword("")
-                      toast.error(ctx.error.message)
+                      const msg = toUserMessage(ctx?.error ?? ctx, {
+                        fallbackTitle: "Couldn’t verify the code",
+                        context: "profile.2fa.verify",
+                      })
+                      toast.error(msg.title, { description: msg.description })
                     },
                     onSuccess() {
                       toast("2FA enabled successfully")
@@ -137,7 +146,11 @@ export default function TwoFaToggleItem({ enabled }: { enabled?: boolean }) {
                 password: twoFaPassword,
                 fetchOptions: {
                   onError(ctx) {
-                    toast.error(ctx.error.message)
+                    const msg = toUserMessage(ctx?.error ?? ctx, {
+                      fallbackTitle: "Couldn’t enable 2FA",
+                      context: "profile.2fa.enable",
+                    })
+                    toast.error(msg.title, { description: msg.description })
                   },
                   onSuccess(ctx) {
                     setTwoFactorVerifyURI(ctx.data.totpURI)
