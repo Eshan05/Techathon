@@ -5,6 +5,13 @@ import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 
+export class TranslatorJobsStoreMisconfiguredError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "TranslatorJobsStoreMisconfiguredError"
+  }
+}
+
 export type TranslatorJobState =
   | "queued"
   | "extracting"
@@ -81,17 +88,56 @@ type MemoryEntry = { value: string; expiresAt: number }
 
 const FS_ROOT = path.join(os.tmpdir(), "kisan-vakil", "translator-jobs", "v1")
 
+function isProductionDeployment() {
+  return process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL)
+}
+
+export function getTranslatorJobsStoreDiagnostics() {
+  const forced = (process.env.TRANSLATOR_JOBS_STORE ?? "").trim().toLowerCase()
+  const redisEnvConfigured = Boolean(
+    process.env.UPSTASH_REDIS_REST_URL?.trim() &&
+    process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
+  )
+
+  return {
+    isProductionDeployment: isProductionDeployment(),
+    vercel: Boolean(process.env.VERCEL),
+    nodeEnv: process.env.NODE_ENV ?? "",
+    forcedStore: forced || null,
+    preferRedis: shouldPreferRedis(),
+    failIfRedisMissing: shouldFailIfRedisMissing(),
+    redisEnvConfigured,
+  }
+}
+
 function shouldPreferRedis() {
   const forced = (process.env.TRANSLATOR_JOBS_STORE ?? "").trim().toLowerCase()
-  if (forced === "local") return false
+
+  // Vercel/serverless instances do not share /tmp or in-memory state.
+  // Always use Redis there so queued jobs remain visible to the polling route.
+  if (isProductionDeployment()) return true
+
   if (forced === "redis") return true
+  if (forced === "local") return false
 
   // Default behavior:
   // - In local dev, prefer local storage (filesystem) so polling works even with multiple dev workers.
   // - On Vercel/production, prefer Redis for cross-instance durability.
-  const isProd = process.env.NODE_ENV === "production"
-  const isVercel = Boolean(process.env.VERCEL)
-  return isProd || isVercel
+  return false
+}
+
+function shouldFailIfRedisMissing() {
+  const forced = (process.env.TRANSLATOR_JOBS_STORE ?? "").trim().toLowerCase()
+
+  if (isProductionDeployment()) return true
+
+  return forced === "redis"
+}
+
+function missingRedisError() {
+  return new TranslatorJobsStoreMisconfiguredError(
+    "Translator jobs storage requires Upstash Redis in production. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (or set TRANSLATOR_JOBS_STORE=local for single-instance dev)."
+  )
 }
 
 function fsPathForKey(key: string) {
@@ -136,9 +182,7 @@ const memoryStore: Map<string, MemoryEntry> = (() => {
     __kisanVakilTranslatorJobsMemoryStore?: Map<string, MemoryEntry>
   }
 
-  if (!g.__kisanVakilTranslatorJobsMemoryStore) {
-    g.__kisanVakilTranslatorJobsMemoryStore = new Map<string, MemoryEntry>()
-  }
+  g.__kisanVakilTranslatorJobsMemoryStore ??= new Map<string, MemoryEntry>()
 
   return g.__kisanVakilTranslatorJobsMemoryStore
 })()
@@ -202,6 +246,7 @@ export async function setTranslatorJobStatus(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     await localSet(jobKey(userId, jobId), JSON.stringify(status))
     return
   }
@@ -224,6 +269,7 @@ export async function getTranslatorJobStatus(userId: string, jobId: string) {
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     const raw = await localGet(jobKey(userId, jobId))
     if (!raw) return null
     try {
@@ -256,6 +302,7 @@ export async function setTranslatorJobSourceChunk(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     await localSet(srcKey(userId, jobId, index), JSON.stringify(chunk))
     return
   }
@@ -282,6 +329,7 @@ export async function getTranslatorJobSourceChunk(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     const raw = await localGet(srcKey(userId, jobId, index))
     if (!raw) return null
     try {
@@ -313,6 +361,7 @@ export async function setTranslatorJobOutputChunk(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     await localSet(outKey(userId, jobId, chunk.index), JSON.stringify(chunk))
     return
   }
@@ -339,6 +388,7 @@ export async function getTranslatorJobOutputChunk(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     const raw = await localGet(outKey(userId, jobId, index))
     if (!raw) return null
     try {
@@ -371,6 +421,7 @@ export async function setTranslatorJobInsightChunk(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     await localSet(insKey(userId, jobId, index), JSON.stringify(insight))
     return
   }
@@ -418,6 +469,7 @@ export async function getTranslatorJobInsightChunk(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     const raw = await localGet(insKey(userId, jobId, index))
     if (!raw) return null
 
@@ -547,6 +599,7 @@ export async function getTranslatorJobChunksAfter(opts: {
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     const start = Math.max(-1, opts.after) + 1
     const end = start + Math.max(1, opts.limit) - 1
     const indexes = Array.from(
