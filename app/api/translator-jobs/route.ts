@@ -5,7 +5,6 @@ import { eq } from "drizzle-orm"
 import { auth } from "@/lib/auth/auth"
 import { ensureFarmerProfilesSchema } from "@/lib/db/compat"
 import { siteConfig } from "@/lib/site"
-import { getQstashClient } from "@/lib/qstash/client"
 import { db } from "@/lib/db/db"
 import { farmerProfiles } from "@/lib/db/schema"
 import {
@@ -306,7 +305,7 @@ async function processTranslatorJobLocally(opts: {
     state: "extracting",
     stage: "extracting",
     updatedAt: Date.now(),
-    message: "Processing locally (dev)…",
+    message: "Processing inline (no queue)…",
   })
 
   const r = await fetch(opts.fileUrl)
@@ -556,10 +555,6 @@ export async function POST(req: Request) {
 
   const isDev = process.env.NODE_ENV !== "production"
   const loopbackBase = isLoopbackBaseUrl(siteConfig.url)
-  const qstash = getQstashClient()
-
-  const requestOrigin = new URL(req.url).origin
-  const publishBaseUrl = isDev ? siteConfig.url : requestOrigin
 
   const userId = session.user.id
   const jobId = crypto.randomUUID()
@@ -610,8 +605,10 @@ export async function POST(req: Request) {
 
   // In local dev, QStash cannot deliver to loopback destinations (localhost/::1).
   // Instead, run the pipeline locally so the analyzer still works without a tunnel.
-  if (isDev && loopbackBase) {
-    void processTranslatorJobLocally({
+  try {
+    // No QStash: run inline.
+    // Note: this can take time for large PDFs/images (OCR + translate).
+    await processTranslatorJobLocally({
       userId,
       jobId,
       fileUrl: parsed.data.fileUrl,
@@ -619,59 +616,22 @@ export async function POST(req: Request) {
       targetLanguage: parsed.data.targetLanguage,
       stateCode: parsed.data.stateCode?.trim() || undefined,
       baseStatus: status,
-    }).catch(async (e) => {
-      console.error(e)
-      await setTranslatorJobStatus(userId, jobId, {
-        ...status,
-        state: "failed",
-        stage: "extracting",
-        updatedAt: Date.now(),
-        message: e instanceof Error ? e.message : "Local processing failed",
-      })
-    })
-
-    return NextResponse.json({ data: { jobId } }, { headers: baseHeaders })
-  }
-
-  if (!qstash) {
-    return NextResponse.json(
-      {
-        error:
-          "QStash is not configured (missing QSTASH_TOKEN). In production, set QSTASH_TOKEN. In dev, set NEXT_PUBLIC_BASE_URL to a public tunnel URL or use local mode.",
-      },
-      { status: 500, headers: baseHeaders }
-    )
-  }
-
-  try {
-    const res = await qstash.publishJSON({
-      url: `${publishBaseUrl}/api/qstash/translator-jobs/process`,
-      body: { userId, jobId, step: "init" },
-    })
-
-    await setTranslatorJobStatus(userId, jobId, {
-      ...status,
-      state: "extracting",
-      updatedAt: Date.now(),
-      messageId: res.messageId,
     })
 
     return NextResponse.json({ data: { jobId } }, { headers: baseHeaders })
   } catch (e) {
     console.error(e)
+
     await setTranslatorJobStatus(userId, jobId, {
       ...status,
       state: "failed",
       updatedAt: Date.now(),
-      message:
-        e instanceof Error
-          ? e.message
-          : "Could not queue processing (QStash publish failed)",
+      message: e instanceof Error ? e.message : "Inline processing failed",
     })
 
     return NextResponse.json(
-      { error: "Could not queue processing" },
-      { status: 502, headers: baseHeaders }
+      { error: e instanceof Error ? e.message : "Inline processing failed" },
+      { status: 500, headers: baseHeaders }
     )
   }
 }
