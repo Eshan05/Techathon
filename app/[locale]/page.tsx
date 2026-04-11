@@ -11,27 +11,27 @@ export default async function Page() {
       title: t("feature1Title"),
       body: t("feature1Body"),
       details: [
-        "Instant survey and gat checks with ownership trail",
-        "Mutation milestones with clear status tracking",
-        "Spot mismatches before you sign",
+        t("feature1Detail1"),
+        t("feature1Detail2"),
+        t("feature1Detail3"),
       ],
     },
     {
       title: t("feature2Title"),
       body: t("feature2Body"),
       details: [
-        "Fast eligibility check for live schemes and subsidies",
-        "Document checklist by scheme and claim type",
-        "Submission route with office and portal guidance",
+        t("feature2Detail1"),
+        t("feature2Detail2"),
+        t("feature2Detail3"),
       ],
     },
     {
       title: t("feature3Title"),
       body: t("feature3Body"),
       details: [
-        "Ready notice templates and complaint drafts",
-        "Signed-copy vault organized case by case",
-        "Quick red-flag scan for risky clauses",
+        t("feature3Detail1"),
+        t("feature3Detail2"),
+        t("feature3Detail3"),
       ],
     },
   ]

@@ -13,7 +13,122 @@
     "feature2Title": "Scheme checker",
     "feature2Body": "Check eligibility for subsidies, loans, and relief fast.",
     "feature3Title": "Notices and documents",
-    "feature3Body": "Keep legal notices, complaints, and paperwork organized."
+    "feature3Body": "Keep legal notices, complaints, and paperwork organized.",
+    "feature1Detail1": "Instant survey and gat checks with ownership trail",
+    "feature1Detail2": "Mutation milestones with clear status tracking",
+    "feature1Detail3": "Spot mismatches before you sign",
+    "feature2Detail1": "Fast eligibility check for live schemes and subsidies",
+    "feature2Detail2": "Document checklist by scheme and claim type",
+    "feature2Detail3": "Submission route with office and portal guidance",
+    "feature3Detail1": "Ready notice templates and complaint drafts",
+    "feature3Detail2": "Signed-copy vault organized case by case",
+    "feature3Detail3": "Quick red-flag scan for risky clauses",
+    "homePage": {
+      "header": {
+        "tagline": "Farmer + legal command center",
+        "verifiedTemplates": "Verified legal templates"
+      },
+      "hero": {
+        "badge": "Trust-first legal aid for fields",
+        "highlight": "before every signature",
+        "howWeHelpButton": "How We Help",
+        "imageBadge": "Evidence ready",
+        "imageAlt": "Farmer and legal support visual",
+        "localLanguageBadge": "Local language ready",
+        "voiceSummaryTitle": "Voice legal summary",
+        "voiceSummaryBody": "This clause transfers crop rights. Ask for revision before signing."
+      },
+      "trustSignals": {
+        "fraudChecks": {
+          "label": "Fraud checks",
+          "value": "Sale deeds, notices, hidden clauses"
+        },
+        "schemeMatch": {
+          "label": "Scheme match",
+          "value": "PM-Kisan, Fasal Bima, KCC"
+        },
+        "evidenceVault": {
+          "label": "Evidence-safe vault",
+          "value": "Secure access with family support"
+        }
+      },
+      "howWeHelp": {
+        "eyebrow": "How we help",
+        "title": "Legal confidence built for Indian farmers"
+      },
+      "helpTracks": {
+        "landRecordIntelligence": {
+          "title": "Land Record Intelligence",
+          "description": "Scan khata, khasra and mutation history before any signature.",
+          "bullets": ["Khata", "Khasra", "Mutation trail"]
+        },
+        "legalNoticeDrafts": {
+          "title": "Legal Notice Drafts",
+          "description": "Generate dispute, payment default, and tenancy notices in plain language.",
+          "bullets": ["Tenancy", "Payment default", "Land conflict"]
+        },
+        "voiceRegionalSupport": {
+          "title": "Voice + Regional Support",
+          "description": "Translate and read legal text aloud in Hindi, Marathi, and local-friendly style.",
+          "bullets": ["Hindi", "Marathi", "Audio summaries"]
+        },
+        "compensationClaims": {
+          "title": "Compensation & Claims",
+          "description": "Step-by-step filing for crop loss, insurance rejection, and relief payouts.",
+          "bullets": ["Crop loss", "Relief filing", "Appeal prep"]
+        },
+        "clauseRedFlagScanner": {
+          "title": "Clause Red-Flag Scanner",
+          "description": "Catch hidden penalties, forced resale clauses, and loan traps before consent.",
+          "bullets": ["Penalty traps", "Agent fraud", "Hidden charges"]
+        },
+        "documentVaultAuditTrail": {
+          "title": "Document Vault + Audit Trail",
+          "description": "Store IDs, court notices, sale deeds, and receipts with a verifiable timeline.",
+          "bullets": ["Timestamped", "Case folders", "Family assisted"]
+        }
+      },
+      "moreSection": {
+        "eyebrow": "A lot more you can do",
+        "title": "One app, many legal and farming actions",
+        "workflowTitle": "Field to court workflow",
+        "workflowItems": [
+          "Capture evidence, geo-tag photos, and scan papers instantly.",
+          "Get legal risk flags in plain language before signing.",
+          "Generate complaint or notice with ready-to-file format."
+        ],
+        "templatesTitle": "Ready templates",
+        "templatesFallbackTitle": "Template library ready",
+        "templatesFallbackBody": "Notices, affidavits, and complaint drafts are one tap away.",
+        "supportListTitle": "Priority support list"
+      },
+      "supportChecklist": {
+        "landOwnershipValidation": {
+          "title": "Land ownership validation",
+          "detail": "Survey, gat number, mutation continuity, and ownership proof."
+        },
+        "noticeComplaintDrafting": {
+          "title": "Notice and complaint drafting",
+          "detail": "Prebuilt legal language for civil, tenancy, and payment disputes."
+        },
+        "schemeSubsidyGuidance": {
+          "title": "Scheme and subsidy guidance",
+          "detail": "Track PM-Kisan, KCC, and crop-related claim opportunities."
+        },
+        "voiceFirstExplainer": {
+          "title": "Voice-first legal explainer",
+          "detail": "Hear difficult clauses in plain language before you sign."
+        },
+        "secureFamilyCollaboration": {
+          "title": "Secure family collaboration",
+          "detail": "Let trusted members help without giving away full control."
+        }
+      },
+      "footer": {
+        "leftSuffix": "with legal guardrails and farmer-first clarity.",
+        "rightText": "Family-assisted, secure, and multilingual."
+      }
+    }
   },
   "Dashboard": {
     "title": "Kisan Vakil",
