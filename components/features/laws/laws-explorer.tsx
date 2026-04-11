@@ -38,11 +38,6 @@ import {
   InputGroupText,
 } from "@/components/ui/input-group"
 import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Select,
@@ -162,6 +157,7 @@ export function LawsExplorer() {
 
   const [topicFilters, setTopicFilters] = React.useState<string[]>([])
   const [kindFilters, setKindFilters] = React.useState<string[]>([])
+  const [filtersOpen, setFiltersOpen] = React.useState(false)
 
   const recognitionRef = React.useRef<any>(null)
   const [speechSupported, setSpeechSupported] = React.useState(false)
@@ -380,6 +376,11 @@ export function LawsExplorer() {
   }, [searchQuery.data])
 
   const hasFilters = topicFilters.length > 0 || kindFilters.length > 0
+  const activeFilterCount = topicFilters.length + kindFilters.length
+  const quickIntents = React.useMemo(
+    () => getNlExamples(locale).slice(0, 6),
+    [locale]
+  )
 
   const filteredHits = React.useMemo(() => {
     const hits = searchQuery.data ?? []
@@ -552,53 +553,137 @@ export function LawsExplorer() {
       )
     : 0
 
+  const quickExamplesRail = (
+    <div className="mt-2 rounded-xl border bg-muted/10 p-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <Badge
+          variant="outline"
+          className="h-6 gap-1.5 px-2 text-[10px] tracking-wide uppercase"
+        >
+          <Sparkles className="size-3.5" />
+          {t("nlExamplesTitle")}
+        </Badge>
+        <span className="text-xs text-muted-foreground">{t("nlNote")}</span>
+      </div>
+
+      <div className="relative mt-2">
+        <div className="flex gap-2 overflow-x-auto pr-7 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {quickIntents.map((ex) => (
+            <Badge
+              key={ex}
+              asChild
+              variant="secondary"
+              className="h-8 shrink-0 cursor-pointer rounded-full px-3"
+            >
+              <button type="button" onClick={() => setQuery(ex)}>
+                <Search className="size-3.5" />
+                <span className="max-w-56 truncate">{ex}</span>
+              </button>
+            </Badge>
+          ))}
+        </div>
+        <div className="pointer-events-none absolute top-0 left-0 h-full w-6 bg-gradient-to-r from-background to-transparent" />
+        <div className="pointer-events-none absolute top-0 right-0 h-full w-10 bg-gradient-to-l from-background via-background/90 to-transparent" />
+      </div>
+    </div>
+  )
+
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <div className="grid size-9 place-items-center rounded-xl border bg-muted/20">
-                <FaGavel className="size-4" />
+    <div className="space-y-5 sm:space-y-6">
+      <section className="relative overflow-hidden rounded-4xl border bg-linear-to-br from-amber-50 via-background to-emerald-50/40 p-4 shadow-sm sm:p-6">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(217,119,6,0.14),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.1),transparent_34%)]" />
+
+        <div className="relative space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border bg-background/80 px-3 py-1 text-tiny font-semibold tracking-wide text-muted-foreground uppercase">
+              {t("title")}
+            </span>
+            <span className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-tiny font-semibold text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-200">
+              {t("subtitle")}
+            </span>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="grid size-11 shrink-0 place-items-center rounded-2xl border bg-background/80">
+              <FaGavel className="size-5" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl leading-tight font-semibold sm:text-3xl">
+                {t("title")}
+              </h1>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                {t("subtitle")}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-2 xs:grid-cols-3">
+            <div className="rounded-2xl border bg-background/80 p-3">
+              <div className="text-tiny font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("modeNL")}
               </div>
-              <div className="min-w-0">
-                <div className="truncate text-lg leading-tight font-semibold">
-                  {t("title")}
-                </div>
-                <div className="truncate text-sm text-muted-foreground">
-                  {t("subtitle")}
-                </div>
+              <div className="mt-1 text-sm font-medium">{t("nlHint")}</div>
+            </div>
+            <div className="rounded-2xl border bg-background/80 p-3">
+              <div className="text-tiny font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("whenApplies")}
+              </div>
+              <div className="mt-1 text-sm font-medium">{t("whatToDo")}</div>
+            </div>
+            <div className="rounded-2xl border bg-background/80 p-3">
+              <div className="text-tiny font-semibold tracking-wide text-muted-foreground uppercase">
+                {t("officialTitle")}
+              </div>
+              <div className="mt-1 text-sm font-medium">
+                {t("officialHint")}
               </div>
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            className="shrink-0 gap-2"
-            onClick={() => {
-              setQuery("")
-              toast.success(t("cleared"))
-            }}
-            disabled={!query.trim()}
-          >
-            <BookOpenText className="size-4" />
-            {t("clear")}
-          </Button>
+          <div className="grid gap-2 xs:grid-cols-2 sm:flex sm:flex-wrap">
+            <Button
+              variant="outline"
+              className="w-full gap-2 sm:w-auto"
+              onClick={() => {
+                setQuery("")
+                setTopicFilters([])
+                setKindFilters([])
+                toast.success(t("cleared"))
+              }}
+              disabled={!query.trim() && !hasFilters}
+            >
+              <BookOpenText className="size-4" />
+              {t("clear")}
+            </Button>
+            <Button
+              variant="secondary"
+              className="w-full gap-2 sm:w-auto"
+              onClick={() => setFiltersOpen(true)}
+            >
+              <SlidersHorizontal className="size-4" />
+              {t("filters")}
+              {activeFilterCount > 0 ? (
+                <Badge variant="outline" className="ml-1 px-2 text-tiny">
+                  {activeFilterCount}
+                </Badge>
+              ) : null}
+            </Button>
+          </div>
         </div>
-      </div>
+      </section>
 
       <Tabs
         value={mode}
         onValueChange={(v) => setMode(v as SearchMode)}
-        className="flex w-full flex-col space-y-2"
+        className="flex w-full flex-col space-y-3"
       >
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-2 rounded-2xl border bg-muted/20 p-1">
           <TabsTrigger value="keyword">{t("modeKeyword")}</TabsTrigger>
           <TabsTrigger value="nl">{t("modeNL")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="keyword" className="m-0">
-          <InputGroup>
+          <InputGroup className="rounded-2xl border bg-background shadow-xs">
             <InputGroupAddon align="inline-start">
               <InputGroupText>
                 <Search />
@@ -643,10 +728,12 @@ export function LawsExplorer() {
               </InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
+
+          {quickExamplesRail}
         </TabsContent>
 
         <TabsContent value="nl" className="m-0">
-          <InputGroup className="h-auto">
+          <InputGroup className="h-auto rounded-2xl border bg-background shadow-xs">
             <InputGroupAddon align="block-start" className="border-b">
               <InputGroupText>
                 <Sparkles />
@@ -704,45 +791,20 @@ export function LawsExplorer() {
             </InputGroupAddon>
           </InputGroup>
 
-          <div className="mt-2 rounded-xl border bg-muted/10 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-xs font-semibold tracking-wide text-muted-foreground">
-                {t("nlExamplesTitle")}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7"
-                onClick={() => setQuery("")}
-                disabled={!query.trim()}
-              >
-                {t("clear")}
-              </Button>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {getNlExamples(locale).map((ex) => (
-                <Button
-                  key={ex}
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="h-7 rounded-full"
-                  onClick={() => setQuery(ex)}
-                >
-                  {ex}
-                </Button>
-              ))}
-            </div>
-          </div>
+          {quickExamplesRail}
         </TabsContent>
       </Tabs>
 
       {topTopics.length > 0 ? (
         <div className="rounded-xl border bg-background p-3">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xs font-semibold tracking-wide text-muted-foreground">
+            <Badge
+              variant="outline"
+              className="h-6 gap-1.5 px-2 text-[10px] tracking-wide uppercase "
+            >
+              <FiTag className="size-3.5" />
               {t("categoriesTitle")}
-            </div>
+            </Badge>
             <Button
               variant="ghost"
               size="sm"
@@ -750,168 +812,92 @@ export function LawsExplorer() {
               onClick={() => setTopicFilters([])}
               disabled={topicFilters.length === 0}
             >
+              <BookOpenText className="size-3.5" />
               {t("clear")}
             </Button>
           </div>
-          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-            {topTopics.map(({ topic, count }) => {
-              const active = topicFilters.includes(topic)
-              return (
-                <Button
-                  key={topic}
-                  type="button"
-                  variant={active ? "default" : "secondary"}
-                  size="sm"
-                  className={cn(
-                    "h-7 shrink-0 gap-2 rounded-full border px-3",
-                    active
-                      ? "border-primary/30"
-                      : "border-border/60 bg-muted/20 hover:bg-muted/30"
-                  )}
-                  onClick={() =>
-                    setTopicFilters((prev) =>
-                      prev.includes(topic)
-                        ? prev.filter((x) => x !== topic)
-                        : [...prev, topic]
-                    )
-                  }
-                >
-                  <FiTag className="size-3.5" />
-                  <span className="max-w-[200px] truncate">
-                    {displayTopic(topic)}
-                  </span>
-                  <span
+
+          <div className="relative mt-2">
+            <div className="flex gap-2 overflow-x-auto pr-7 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {topTopics.map(({ topic, count }) => {
+                const active = topicFilters.includes(topic)
+                return (
+                  <Badge
+                    key={topic}
+                    asChild
+                    variant={active ? "default" : "secondary"}
                     className={cn(
-                      "text-xs",
+                      "h-7 text-black shrink-0 cursor-pointer gap-2 rounded-full border px-3 text-xs",
                       active
-                        ? "text-primary-foreground/80"
-                        : "text-muted-foreground"
+                        ? "border-primary/30"
+                        : "border-border/60 bg-muted/20 hover:bg-muted/30"
                     )}
                   >
-                    {count}
-                  </span>
-                </Button>
-              )
-            })}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTopicFilters((prev) =>
+                          prev.includes(topic)
+                            ? prev.filter((x) => x !== topic)
+                            : [...prev, topic]
+                        )
+                      }
+                    >
+                      <FiTag className="size-3.5" />
+                      <span className="max-w-[200px] truncate">
+                        {displayTopic(topic)}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-xs",
+                          active
+                            ? "text-primary-foreground/80"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  </Badge>
+                )
+              })}
+            </div>
+            <div className="pointer-events-none absolute top-0 left-0 h-full w-6 bg-gradient-to-r from-background to-transparent" />
+            <div className="pointer-events-none absolute top-0 right-0 h-full w-10 bg-gradient-to-l from-background via-background/90 to-transparent" />
           </div>
         </div>
       ) : null}
 
-      <div className="rounded-xl border">
-        <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
-          <div className="text-sm font-semibold">{t("resultsTitle")}</div>
-          <div className="flex items-center gap-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-2">
-                  <SlidersHorizontal className="size-4" />
-                  {t("filters")}
-                  {hasFilters ? (
-                    <Badge variant="secondary" className="ml-1 px-2">
-                      {topicFilters.length + kindFilters.length}
-                    </Badge>
-                  ) : null}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-[320px] p-3">
-                <div className="grid gap-4">
-                  <div>
-                    <div className="text-xs font-semibold tracking-wide text-muted-foreground">
-                      {t("filterTopics")}
-                    </div>
-                    <div className="mt-2 grid max-h-44 gap-2 overflow-auto pr-1">
-                      {allTopics.length === 0 ? (
-                        <div className="text-sm text-muted-foreground">
-                          {t("none")}
-                        </div>
-                      ) : (
-                        allTopics.map((topic) => (
-                          <label
-                            key={topic}
-                            className="flex cursor-pointer items-center gap-2 text-sm"
-                          >
-                            <Checkbox
-                              checked={topicFilters.includes(topic)}
-                              onCheckedChange={(checked) => {
-                                const next = checked ? true : false
-                                setTopicFilters((prev) =>
-                                  next
-                                    ? prev.includes(topic)
-                                      ? prev
-                                      : [...prev, topic]
-                                    : prev.filter((x) => x !== topic)
-                                )
-                              }}
-                            />
-                            <span className="min-w-0 truncate">
-                              {displayTopic(topic)}
-                            </span>
-                          </label>
-                        ))
-                      )}
-                    </div>
-                  </div>
+      <div className="rounded-2xl border bg-background">
+        <div className="flex flex-col gap-3 border-b px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <BookOpenText className="size-4" />
+              {t("resultsTitle")}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {t("showing", {
+                shown: filteredHits.length,
+                total: searchQuery.data?.length ?? 0,
+              })}
+            </div>
+          </div>
 
-                  <div>
-                    <div className="text-xs font-semibold tracking-wide text-muted-foreground">
-                      {t("filterKinds")}
-                    </div>
-                    <div className="mt-2 grid gap-2">
-                      {allKinds.length === 0 ? (
-                        <div className="text-sm text-muted-foreground">
-                          {t("none")}
-                        </div>
-                      ) : (
-                        allKinds.map((kind) => (
-                          <label
-                            key={kind}
-                            className="flex cursor-pointer items-center gap-2 text-sm"
-                          >
-                            <Checkbox
-                              checked={kindFilters.includes(kind)}
-                              onCheckedChange={(checked) => {
-                                const next = checked ? true : false
-                                setKindFilters((prev) =>
-                                  next
-                                    ? prev.includes(kind)
-                                      ? prev
-                                      : [...prev, kind]
-                                    : prev.filter((x) => x !== kind)
-                                )
-                              }}
-                            />
-                            <span className="min-w-0 truncate">
-                              {kindLabel(kind)}
-                            </span>
-                          </label>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-xs text-muted-foreground">
-                      {t("showing", {
-                        shown: filteredHits.length,
-                        total: searchQuery.data?.length ?? 0,
-                      })}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7"
-                      disabled={!hasFilters}
-                      onClick={() => {
-                        setTopicFilters([])
-                        setKindFilters([])
-                      }}
-                    >
-                      {t("clearFilters")}
-                    </Button>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-2"
+              onClick={() => setFiltersOpen(true)}
+            >
+              <SlidersHorizontal className="size-4" />
+              {t("filters")}
+              {hasFilters ? (
+                <Badge variant="secondary" className="ml-1 px-2">
+                  {activeFilterCount}
+                </Badge>
+              ) : null}
+            </Button>
 
             <div className="text-xs text-muted-foreground">
               {searchQuery.isFetching
@@ -920,6 +906,33 @@ export function LawsExplorer() {
             </div>
           </div>
         </div>
+
+        {hasFilters ? (
+          <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 sm:px-4">
+            {topicFilters.map((topic) => (
+              <Badge key={topic} variant="secondary" className="gap-1">
+                <FiTag className="size-3" />
+                {displayTopic(topic)}
+              </Badge>
+            ))}
+            {kindFilters.map((kind) => (
+              <Badge key={kind} variant="outline">
+                {kindLabel(kind)}
+              </Badge>
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-7"
+              onClick={() => {
+                setTopicFilters([])
+                setKindFilters([])
+              }}
+            >
+              {t("clearFilters")}
+            </Button>
+          </div>
+        ) : null}
 
         <ScrollArea className="h-[56vh]">
           <div className="p-2">
@@ -951,7 +964,7 @@ export function LawsExplorer() {
                     role="button"
                     tabIndex={0}
                     className={cn(
-                      "group w-full cursor-pointer rounded-xl border bg-background p-3 text-left transition-colors hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                      "group w-full cursor-pointer rounded-2xl border bg-background p-3.5 text-left transition-colors hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                       selectedLawId === hit.id && lawDrawerOpen
                         ? "border-primary/40 bg-muted/20"
                         : null
@@ -977,35 +990,33 @@ export function LawsExplorer() {
                           <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                         </div>
 
-                        <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                          {hit.snippet}
-                        </div>
-
-                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                          {hit.year ? (
-                            <span className="inline-flex items-center gap-1">
-                              <Calendar className="size-3.5" />
-                              {hit.year}
-                            </span>
-                          ) : null}
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-black!">
                           {hit.kind ? (
-                            <span className="inline-flex items-center gap-1">
-                              <BookOpenText className="size-3.5" />
+                            <Badge variant={kindBadgeVariant(hit.kind)}>
                               {kindLabel(hit.kind)}
-                            </span>
+                            </Badge>
                           ) : null}
                           {hit.status ? (
-                            <span className="inline-flex items-center gap-1">
-                              <span className="size-1.5 rounded-full bg-muted-foreground/60" />
+                            <Badge variant={statusBadgeVariant(hit.status)}>
                               {statusLabel(hit.status)}
-                            </span>
+                            </Badge>
+                          ) : null}
+                          {hit.year ? (
+                            <Badge variant="outline" className="gap-1">
+                              <Calendar className="size-3.5" />
+                              {hit.year}
+                            </Badge>
                           ) : null}
                           {hit.jurisdiction?.stateName ? (
-                            <span className="inline-flex items-center gap-1">
+                            <Badge variant="outline" className="gap-1">
                               <FiTag className="size-3.5" />
                               {hit.jurisdiction.stateName}
-                            </span>
+                            </Badge>
                           ) : null}
+                        </div>
+
+                        <div className="mt-2 rounded-lg border bg-muted/15 p-2 text-xs leading-relaxed text-muted-foreground">
+                          {hit.snippet}
                         </div>
 
                         {hit.topics?.length ? (
@@ -1013,31 +1024,34 @@ export function LawsExplorer() {
                             {hit.topics.slice(0, 6).map((topic) => {
                               const active = topicFilters.includes(topic)
                               return (
-                                <Button
+                                <Badge
                                   key={topic}
-                                  type="button"
+                                  asChild
                                   variant={active ? "default" : "secondary"}
-                                  size="sm"
                                   className={cn(
-                                    "h-6 gap-1.5 rounded-full border px-2 text-[11px]",
+                                    "h-6 text-black cursor-pointer gap-1.5 rounded-full border px-2 text-[11px]",
                                     active
                                       ? "border-primary/30"
                                       : "border-border/60 bg-muted/20 hover:bg-muted/30"
                                   )}
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setTopicFilters((prev) =>
-                                      prev.includes(topic)
-                                        ? prev.filter((x) => x !== topic)
-                                        : [...prev, topic]
-                                    )
-                                  }}
                                 >
-                                  <FiTag className="size-3.5" />
-                                  <span className="max-w-[180px] truncate">
-                                    {displayTopic(topic)}
-                                  </span>
-                                </Button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setTopicFilters((prev) =>
+                                        prev.includes(topic)
+                                          ? prev.filter((x) => x !== topic)
+                                          : [...prev, topic]
+                                      )
+                                    }}
+                                  >
+                                    <FiTag className="size-3.5" />
+                                    <span className="max-w-[180px] truncate">
+                                      {displayTopic(topic)}
+                                    </span>
+                                  </button>
+                                </Badge>
                               )
                             })}
                           </div>
@@ -1051,6 +1065,121 @@ export function LawsExplorer() {
           </div>
         </ScrollArea>
       </div>
+
+      <Credenza open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <CredenzaContent className="mx-auto max-h-[84vh] w-full max-w-lg overflow-hidden">
+          <CredenzaHeader className="border-b text-left">
+            <CredenzaTitle>{t("filters")}</CredenzaTitle>
+            <CredenzaDescription>
+              {t("showing", {
+                shown: filteredHits.length,
+                total: searchQuery.data?.length ?? 0,
+              })}
+            </CredenzaDescription>
+          </CredenzaHeader>
+
+          <ScrollArea className="h-[62vh] px-4">
+            <CredenzaBody className="space-y-5 py-4">
+              <div>
+                <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t("filterTopics")}
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {allTopics.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">
+                      {t("none")}
+                    </div>
+                  ) : (
+                    allTopics.map((topic) => (
+                      <label
+                        key={topic}
+                        className="flex cursor-pointer items-start gap-2 rounded-lg border bg-background p-2 text-sm"
+                      >
+                        <Checkbox
+                          checked={topicFilters.includes(topic)}
+                          onCheckedChange={(checked) => {
+                            const next = checked ? true : false
+                            setTopicFilters((prev) =>
+                              next
+                                ? prev.includes(topic)
+                                  ? prev
+                                  : [...prev, topic]
+                                : prev.filter((x) => x !== topic)
+                            )
+                          }}
+                        />
+                        <span className="min-w-0 truncate">
+                          {displayTopic(topic)}
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                  {t("filterKinds")}
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {allKinds.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">
+                      {t("none")}
+                    </div>
+                  ) : (
+                    allKinds.map((kind) => (
+                      <label
+                        key={kind}
+                        className="flex cursor-pointer items-center gap-2 rounded-lg border bg-background p-2 text-sm"
+                      >
+                        <Checkbox
+                          checked={kindFilters.includes(kind)}
+                          onCheckedChange={(checked) => {
+                            const next = checked ? true : false
+                            setKindFilters((prev) =>
+                              next
+                                ? prev.includes(kind)
+                                  ? prev
+                                  : [...prev, kind]
+                                : prev.filter((x) => x !== kind)
+                            )
+                          }}
+                        />
+                        <span className="min-w-0 truncate">
+                          {kindLabel(kind)}
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+            </CredenzaBody>
+          </ScrollArea>
+
+          <div className="flex items-center justify-between gap-2 border-t px-4 py-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              disabled={!hasFilters}
+              onClick={() => {
+                setTopicFilters([])
+                setKindFilters([])
+              }}
+            >
+              {t("clearFilters")}
+            </Button>
+
+            <Button
+              size="sm"
+              className="h-8"
+              onClick={() => setFiltersOpen(false)}
+            >
+              {t("search")}
+            </Button>
+          </div>
+        </CredenzaContent>
+      </Credenza>
 
       <Credenza open={lawDrawerOpen} onOpenChange={setLawDrawerOpen}>
         <CredenzaContent className="mx-auto max-h-[80vh] w-full max-w-4xl overflow-hidden lg:max-w-4xl!">
@@ -1113,9 +1242,9 @@ export function LawsExplorer() {
                   </div>
                 ) : law ? (
                   <>
-                    <div className="rounded-xl border bg-muted/10 p-4">
+                    <div className="rounded-2xl border bg-linear-to-br from-amber-50/80 via-background to-background p-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-xs font-semibold tracking-wide text-muted-foreground">
+                        <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                           {t("simpleTitle")}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -1139,65 +1268,132 @@ export function LawsExplorer() {
                       <div className="mt-2 text-sm leading-relaxed text-foreground/90">
                         {law.plainLanguage.summary}
                       </div>
+
+                      {law.plainLanguage.whatToDo.length ? (
+                        <div className="mt-3 rounded-xl border bg-background/90 p-3">
+                          <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                            {t("whatToDo")}
+                          </div>
+                          <ol className="mt-2 space-y-1.5 text-sm">
+                            {law.plainLanguage.whatToDo
+                              .slice(0, 3)
+                              .map((item, index) => (
+                                <li
+                                  key={item}
+                                  className="flex items-start gap-2"
+                                >
+                                  <span className="mt-0.5 inline-grid size-5 shrink-0 place-items-center rounded-full border bg-muted/20 text-[11px] font-semibold">
+                                    {index + 1}
+                                  </span>
+                                  <span className="leading-relaxed">
+                                    {item}
+                                  </span>
+                                </li>
+                              ))}
+                          </ol>
+                        </div>
+                      ) : null}
                     </div>
 
-                    <div className="rounded-xl border bg-background p-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-sm font-semibold">
-                          {t("listenTitle")}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {t("listenHint")}
-                        </div>
-                      </div>
-                      <div className="mt-2">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Volume2 className="size-4" />
-                          {t("listenNote")}
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <div className="rounded-xl border bg-background p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm font-semibold">
+                            {t("listenTitle")}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {t("listenHint")}
+                          </div>
                         </div>
                         <div className="mt-2">
-                          <TTSPlayer text={ttsText} language={ttsLanguage} />
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Volume2 className="size-4" />
+                            {t("listenNote")}
+                          </div>
+                          <div className="mt-2">
+                            <TTSPlayer text={ttsText} language={ttsLanguage} />
+                          </div>
                         </div>
+                      </div>
+
+                      <div className="rounded-xl border bg-background p-4">
+                        <div className="text-sm font-semibold">
+                          {t("requiredDocs")}
+                        </div>
+                        <ul className="mt-2 space-y-1.5 text-sm">
+                          {(law.plainLanguage.requiredDocs.length
+                            ? law.plainLanguage.requiredDocs
+                            : [t("none")]
+                          )
+                            .slice(0, 4)
+                            .map((item) => (
+                              <li key={item} className="flex items-start gap-2">
+                                <span className="mt-1 inline-block size-1.5 shrink-0 rounded-full bg-primary/60" />
+                                <span className="leading-relaxed">{item}</span>
+                              </li>
+                            ))}
+                        </ul>
+
+                        {law.plainLanguage.redFlags.length ? (
+                          <div className="mt-3 rounded-lg border border-destructive/25 bg-destructive/5 p-3">
+                            <div className="text-xs font-semibold tracking-wide text-destructive uppercase">
+                              {t("redFlags")}
+                            </div>
+                            <ul className="mt-2 space-y-1 text-xs text-destructive/90">
+                              {law.plainLanguage.redFlags
+                                .slice(0, 2)
+                                .map((item) => (
+                                  <li key={item} className="leading-relaxed">
+                                    • {item}
+                                  </li>
+                                ))}
+                            </ul>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
 
-                    <Section
-                      title={t("whenApplies")}
-                      items={law.plainLanguage.whenApplies}
-                    />
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <Section
+                        title={t("whenApplies")}
+                        items={law.plainLanguage.whenApplies}
+                      />
 
-                    <Section
-                      title={t("keyPoints")}
-                      items={law.plainLanguage.keyPoints}
-                    />
+                      <Section
+                        title={t("keyPoints")}
+                        items={law.plainLanguage.keyPoints}
+                      />
 
-                    <Section
-                      title={t("whatToDo")}
-                      items={law.plainLanguage.whatToDo}
-                    />
+                      <Section
+                        title={t("whatToDo")}
+                        items={law.plainLanguage.whatToDo}
+                      />
 
-                    <Section
-                      title={t("requiredDocs")}
-                      items={law.plainLanguage.requiredDocs}
-                    />
+                      <Section
+                        title={t("requiredDocs")}
+                        items={law.plainLanguage.requiredDocs}
+                      />
+                    </div>
 
                     <Separator />
 
-                    <Section
-                      title={t("redFlags")}
-                      items={law.plainLanguage.redFlags}
-                      tone="warn"
-                    />
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      <Section
+                        title={t("redFlags")}
+                        items={law.plainLanguage.redFlags}
+                        tone="warn"
+                      />
 
-                    <Section
-                      title={t("edgeCases")}
-                      items={law.plainLanguage.edgeCases}
-                    />
+                      <Section
+                        title={t("edgeCases")}
+                        items={law.plainLanguage.edgeCases}
+                      />
 
-                    <Section
-                      title={t("sideEffects")}
-                      items={law.plainLanguage.sideEffects}
-                    />
+                      <Section
+                        title={t("sideEffects")}
+                        items={law.plainLanguage.sideEffects}
+                      />
+                    </div>
 
                     <div className="rounded-xl border bg-background p-4">
                       <div className="text-sm font-semibold">

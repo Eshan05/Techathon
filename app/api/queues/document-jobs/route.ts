@@ -21,43 +21,37 @@ const payloadSchema = z
   .strict()
 
 export async function POST(request: Request) {
-  const isLocalQueueRequest = request.headers.get("x-local-queue") === "1"
+  const signature =
+    request.headers.get("upstash-signature") ??
+    request.headers.get("Upstash-Signature")
 
-  const signature = isLocalQueueRequest
-    ? ""
-    : (request.headers.get("upstash-signature") ??
-      request.headers.get("Upstash-Signature") ??
-      "")
-
-  if (!isLocalQueueRequest && !signature) {
+  if (!signature) {
     return NextResponse.json({ error: "Missing signature" }, { status: 401 })
+  }
+
+  const keys = getQstashSigningKeys()
+  if (!keys) {
+    return NextResponse.json(
+      { error: "QStash signing keys not configured" },
+      { status: 500 }
+    )
   }
 
   const body = await request.text()
 
-  if (!isLocalQueueRequest) {
-    const keys = getQstashSigningKeys()
-    if (!keys) {
-      return NextResponse.json(
-        { error: "QStash signing keys not configured" },
-        { status: 500 }
-      )
-    }
+  const url = new URL(request.url)
+  const subject = `${url.origin}${url.pathname}`
 
-    const url = new URL(request.url)
-    const subject = `${url.origin}${url.pathname}`
+  const receiver = new Receiver({
+    currentSigningKey: keys.currentSigningKey,
+    nextSigningKey: keys.nextSigningKey,
+  })
 
-    const receiver = new Receiver({
-      currentSigningKey: keys.currentSigningKey,
-      nextSigningKey: keys.nextSigningKey,
-    })
-
-    try {
-      await receiver.verify({ signature, body, url: subject })
-    } catch (e) {
-      console.error(e)
-      return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
-    }
+  try {
+    await receiver.verify({ signature, body, url: subject })
+  } catch (e) {
+    console.error(e)
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
   }
 
   let json: unknown

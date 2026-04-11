@@ -6,7 +6,7 @@ import { db } from "@/lib/db/db"
 import { documents } from "@/lib/db/schema"
 import { getQstashClient } from "@/lib/qstash/client"
 import { setDocumentJobStatus } from "@/lib/qstash/document-jobs"
-import { isLoopbackSiteUrl, siteConfig } from "@/lib/site"
+import { siteConfig } from "@/lib/site"
 
 export const runtime = "nodejs"
 
@@ -41,26 +41,6 @@ export async function POST(
   await setDocumentJobStatus(session.user.id, id, baseJob)
 
   try {
-    if (isLoopbackSiteUrl(siteConfig.url)) {
-      const localRes = await fetch(
-        new URL("/api/queues/document-jobs", request.url),
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-local-queue": "1",
-          },
-          body: JSON.stringify({ userId: session.user.id, documentId: id }),
-        }
-      )
-
-      if (!localRes.ok) {
-        throw new Error(`Local queue failed (${localRes.status})`)
-      }
-
-      return NextResponse.json({ data: { job: baseJob } })
-    }
-
     const res = await qstash.publishJSON({
       url: `${siteConfig.url}/api/queues/document-jobs`,
       body: { userId: session.user.id, documentId: id },
