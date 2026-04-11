@@ -40,7 +40,10 @@ export const POST = verifySignatureAppRouter(
 
       const json = await req.json().catch(() => null)
       if (!json || typeof json !== "object") {
-        return NextResponse.json({ error: "Invalid JSON body" }, { status: 500 })
+        return NextResponse.json(
+          { error: "Invalid JSON body" },
+          { status: 500 }
+        )
       }
 
       // TODO: handle webhook payload for jobId

@@ -800,7 +800,7 @@ export function LawsExplorer() {
           <div className="flex items-center justify-between gap-2">
             <Badge
               variant="outline"
-              className="h-6 gap-1.5 px-2 text-[10px] tracking-wide uppercase "
+              className="h-6 gap-1.5 px-2 text-[10px] tracking-wide uppercase"
             >
               <FiTag className="size-3.5" />
               {t("categoriesTitle")}
@@ -827,7 +827,7 @@ export function LawsExplorer() {
                     asChild
                     variant={active ? "default" : "secondary"}
                     className={cn(
-                      "h-7 text-black shrink-0 cursor-pointer gap-2 rounded-full border px-3 text-xs",
+                      "h-7 shrink-0 cursor-pointer gap-2 rounded-full border px-3 text-xs text-black",
                       active
                         ? "border-primary/30"
                         : "border-border/60 bg-muted/20 hover:bg-muted/30"
@@ -1029,7 +1029,7 @@ export function LawsExplorer() {
                                   asChild
                                   variant={active ? "default" : "secondary"}
                                   className={cn(
-                                    "h-6 text-black cursor-pointer gap-1.5 rounded-full border px-2 text-[11px]",
+                                    "h-6 cursor-pointer gap-1.5 rounded-full border px-2 text-[11px] text-black",
                                     active
                                       ? "border-primary/30"
                                       : "border-border/60 bg-muted/20 hover:bg-muted/30"
