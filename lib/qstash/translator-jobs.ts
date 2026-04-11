@@ -88,29 +88,32 @@ type MemoryEntry = { value: string; expiresAt: number }
 
 const FS_ROOT = path.join(os.tmpdir(), "kisan-vakil", "translator-jobs", "v1")
 
+function isProductionDeployment() {
+  return process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL)
+}
+
 function shouldPreferRedis() {
   const forced = (process.env.TRANSLATOR_JOBS_STORE ?? "").trim().toLowerCase()
-  if (forced === "local") return false
+
+  // Vercel/serverless instances do not share /tmp or in-memory state.
+  // Always use Redis there so queued jobs remain visible to the polling route.
+  if (isProductionDeployment()) return true
+
   if (forced === "redis") return true
+  if (forced === "local") return false
 
   // Default behavior:
   // - In local dev, prefer local storage (filesystem) so polling works even with multiple dev workers.
   // - On Vercel/production, prefer Redis for cross-instance durability.
-  const isProd = process.env.NODE_ENV === "production"
-  const isVercel = Boolean(process.env.VERCEL)
-  return isProd || isVercel
+  return false
 }
 
 function shouldFailIfRedisMissing() {
   const forced = (process.env.TRANSLATOR_JOBS_STORE ?? "").trim().toLowerCase()
-  if (forced === "local") return false
-  if (forced === "redis") return true
 
-  // Default: missing Redis is fatal on Vercel/production because
-  // local /tmp storage isn't shared across serverless instances.
-  const isProd = process.env.NODE_ENV === "production"
-  const isVercel = Boolean(process.env.VERCEL)
-  return isProd || isVercel
+  if (isProductionDeployment()) return true
+
+  return forced === "redis"
 }
 
 function missingRedisError() {
@@ -161,9 +164,7 @@ const memoryStore: Map<string, MemoryEntry> = (() => {
     __kisanVakilTranslatorJobsMemoryStore?: Map<string, MemoryEntry>
   }
 
-  if (!g.__kisanVakilTranslatorJobsMemoryStore) {
-    g.__kisanVakilTranslatorJobsMemoryStore = new Map<string, MemoryEntry>()
-  }
+  g.__kisanVakilTranslatorJobsMemoryStore ??= new Map<string, MemoryEntry>()
 
   return g.__kisanVakilTranslatorJobsMemoryStore
 })()
