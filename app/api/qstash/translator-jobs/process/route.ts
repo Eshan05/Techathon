@@ -302,6 +302,7 @@ async function analyzeChunkInsight(opts: {
 }
 
 async function publishNextChunk(opts: {
+  baseUrl: string
   userId: string
   jobId: string
   index: number
@@ -310,7 +311,7 @@ async function publishNextChunk(opts: {
   if (!qstash) throw new Error("QStash not configured")
 
   await qstash.publishJSON({
-    url: `${siteConfig.url}/api/qstash/translator-jobs/process`,
+    url: `${opts.baseUrl}/api/qstash/translator-jobs/process`,
     body: {
       userId: opts.userId,
       jobId: opts.jobId,
@@ -321,6 +322,8 @@ async function publishNextChunk(opts: {
 }
 
 export async function POST(request: Request) {
+  const baseUrl = new URL(request.url).origin
+
   const signature =
     request.headers.get("upstash-signature") ??
     request.headers.get("Upstash-Signature")
@@ -505,7 +508,7 @@ export async function POST(request: Request) {
         retryCount: retryCount || undefined,
       })
 
-      await publishNextChunk({ userId, jobId, index: 0 })
+      await publishNextChunk({ baseUrl, userId, jobId, index: 0 })
       return NextResponse.json({ ok: true })
     }
 
@@ -536,7 +539,7 @@ export async function POST(request: Request) {
     const src = await getTranslatorJobSourceChunk(userId, jobId, index)
     if (!src?.text?.trim()) {
       // Skip empty chunk.
-      await publishNextChunk({ userId, jobId, index: index + 1 })
+      await publishNextChunk({ baseUrl, userId, jobId, index: index + 1 })
       return NextResponse.json({ ok: true })
     }
 
@@ -610,7 +613,7 @@ export async function POST(request: Request) {
     }
 
     if (index + 1 < job.totalChunks) {
-      await publishNextChunk({ userId, jobId, index: index + 1 })
+      await publishNextChunk({ baseUrl, userId, jobId, index: index + 1 })
       return NextResponse.json({ ok: true })
     }
 

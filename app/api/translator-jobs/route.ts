@@ -12,6 +12,7 @@ import {
   setTranslatorJobInsightChunk,
   setTranslatorJobOutputChunk,
   setTranslatorJobStatus,
+  getTranslatorJobsStoreDiagnostics,
   type TranslatorInsight,
   type TranslatorJobStatus,
   type TranslatorOcrPreference,
@@ -530,20 +531,35 @@ const requestSchema = z
   .strict()
 
 export async function POST(req: Request) {
+  const diag = getTranslatorJobsStoreDiagnostics()
+  const baseHeaders = {
+    "x-kisan-vakil-api": "translator-jobs",
+    "x-kisan-vakil-store": diag.preferRedis ? "redis" : "local",
+  }
+
   const session = await auth.api.getSession({ headers: req.headers })
   if (!session?.session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401, headers: baseHeaders }
+    )
   }
 
   const json = await req.json().catch(() => null)
   const parsed = requestSchema.safeParse(json)
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Invalid request" },
+      { status: 400, headers: baseHeaders }
+    )
   }
 
   const isDev = process.env.NODE_ENV !== "production"
   const loopbackBase = isLoopbackBaseUrl(siteConfig.url)
   const qstash = getQstashClient()
+
+  const requestOrigin = new URL(req.url).origin
+  const publishBaseUrl = isDev ? siteConfig.url : requestOrigin
 
   const userId = session.user.id
   const jobId = crypto.randomUUID()
@@ -584,7 +600,10 @@ export async function POST(req: Request) {
     await setTranslatorJobStatus(userId, jobId, status)
   } catch (e) {
     if (e instanceof TranslatorJobsStoreMisconfiguredError) {
-      return NextResponse.json({ error: e.message }, { status: 500 })
+      return NextResponse.json(
+        { error: e.message, meta: diag },
+        { status: 500, headers: baseHeaders }
+      )
     }
     throw e
   }
@@ -611,7 +630,7 @@ export async function POST(req: Request) {
       })
     })
 
-    return NextResponse.json({ data: { jobId } })
+    return NextResponse.json({ data: { jobId } }, { headers: baseHeaders })
   }
 
   if (!qstash) {
@@ -620,13 +639,13 @@ export async function POST(req: Request) {
         error:
           "QStash is not configured (missing QSTASH_TOKEN). In production, set QSTASH_TOKEN. In dev, set NEXT_PUBLIC_BASE_URL to a public tunnel URL or use local mode.",
       },
-      { status: 500 }
+      { status: 500, headers: baseHeaders }
     )
   }
 
   try {
     const res = await qstash.publishJSON({
-      url: `${siteConfig.url}/api/qstash/translator-jobs/process`,
+      url: `${publishBaseUrl}/api/qstash/translator-jobs/process`,
       body: { userId, jobId, step: "init" },
     })
 
@@ -637,7 +656,7 @@ export async function POST(req: Request) {
       messageId: res.messageId,
     })
 
-    return NextResponse.json({ data: { jobId } })
+    return NextResponse.json({ data: { jobId } }, { headers: baseHeaders })
   } catch (e) {
     console.error(e)
     await setTranslatorJobStatus(userId, jobId, {
@@ -652,7 +671,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { error: "Could not queue processing" },
-      { status: 502 }
+      { status: 502, headers: baseHeaders }
     )
   }
 }

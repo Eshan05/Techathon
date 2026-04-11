@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth/auth"
 import {
   getTranslatorJobChunksAfter,
   getTranslatorJobStatus,
+  getTranslatorJobsStoreDiagnostics,
   TranslatorJobsStoreMisconfiguredError,
 } from "@/lib/qstash/translator-jobs"
 
@@ -19,9 +20,18 @@ export async function GET(
   req: Request,
   ctx: { params: Promise<{ id: string }> }
 ) {
+  const diag = getTranslatorJobsStoreDiagnostics()
+  const baseHeaders = {
+    "x-kisan-vakil-api": "translator-jobs/[id]",
+    "x-kisan-vakil-store": diag.preferRedis ? "redis" : "local",
+  }
+
   const session = await auth.api.getSession({ headers: req.headers })
   if (!session?.session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401, headers: baseHeaders }
+    )
   }
 
   const params = await ctx.params
@@ -34,7 +44,10 @@ export async function GET(
   })
 
   if (!parsedQuery.success) {
-    return NextResponse.json({ error: "Invalid query" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Invalid query" },
+      { status: 400, headers: baseHeaders }
+    )
   }
 
   const userId = session.user.id
@@ -43,7 +56,10 @@ export async function GET(
     status = await getTranslatorJobStatus(userId, jobId)
   } catch (e) {
     if (e instanceof TranslatorJobsStoreMisconfiguredError) {
-      return NextResponse.json({ error: e.message }, { status: 500 })
+      return NextResponse.json(
+        { error: e.message, meta: diag },
+        { status: 500, headers: baseHeaders }
+      )
     }
     throw e
   }
@@ -52,7 +68,10 @@ export async function GET(
     if (process.env.NODE_ENV !== "production") {
       console.warn("[translator-jobs] Job not found", { userId, jobId })
     }
-    return NextResponse.json({ error: "Job not found" }, { status: 404 })
+    return NextResponse.json(
+      { error: "Job not found", meta: diag },
+      { status: 404, headers: baseHeaders }
+    )
   }
 
   let outputs: Awaited<
@@ -70,7 +89,10 @@ export async function GET(
     }))
   } catch (e) {
     if (e instanceof TranslatorJobsStoreMisconfiguredError) {
-      return NextResponse.json({ error: e.message }, { status: 500 })
+      return NextResponse.json(
+        { error: e.message, meta: diag },
+        { status: 500, headers: baseHeaders }
+      )
     }
     throw e
   }
@@ -81,12 +103,15 @@ export async function GET(
     ...insights.map((c) => c.index)
   )
 
-  return NextResponse.json({
-    data: {
-      status,
-      chunks: outputs,
-      insights,
-      nextAfter,
+  return NextResponse.json(
+    {
+      data: {
+        status,
+        chunks: outputs,
+        insights,
+        nextAfter,
+      },
     },
-  })
+    { headers: baseHeaders }
+  )
 }
