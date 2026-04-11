@@ -4,7 +4,7 @@ import { z } from "zod"
 
 import { getQstashClient } from "@/lib/qstash/client"
 import { getQstashSigningKeys } from "@/lib/qstash/keys"
-import { siteConfig } from "@/lib/site"
+import { isLoopbackSiteUrl, siteConfig } from "@/lib/site"
 import {
   getTranslatorJobInsightChunk,
   getTranslatorJobOutputChunk,
@@ -306,6 +306,31 @@ async function publishNextChunk(opts: {
   jobId: string
   index: number
 }) {
+  if (isLoopbackSiteUrl(siteConfig.url)) {
+    const res = await fetch(
+      new URL("/api/queues/translator-runs", siteConfig.url),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-local-queue": "1",
+        },
+        body: JSON.stringify({
+          userId: opts.userId,
+          jobId: opts.jobId,
+          step: "chunk",
+          index: opts.index,
+        }),
+      }
+    )
+
+    if (!res.ok) {
+      throw new Error(`Local queue failed (${res.status})`)
+    }
+
+    return
+  }
+
   const qstash = getQstashClient()
   if (!qstash) throw new Error("QStash not configured")
 
@@ -321,37 +346,43 @@ async function publishNextChunk(opts: {
 }
 
 export async function POST(request: Request) {
-  const signature =
-    request.headers.get("upstash-signature") ??
-    request.headers.get("Upstash-Signature")
+  const isLocalQueueRequest = request.headers.get("x-local-queue") === "1"
 
-  if (!signature) {
+  const signature = isLocalQueueRequest
+    ? ""
+    : (request.headers.get("upstash-signature") ??
+      request.headers.get("Upstash-Signature") ??
+      "")
+
+  if (!isLocalQueueRequest && !signature) {
     return NextResponse.json({ error: "Missing signature" }, { status: 401 })
-  }
-
-  const keys = getQstashSigningKeys()
-  if (!keys) {
-    return NextResponse.json(
-      { error: "QStash signing keys not configured" },
-      { status: 500 }
-    )
   }
 
   const body = await request.text()
 
-  const url = new URL(request.url)
-  const subject = `${url.origin}${url.pathname}`
+  if (!isLocalQueueRequest) {
+    const keys = getQstashSigningKeys()
+    if (!keys) {
+      return NextResponse.json(
+        { error: "QStash signing keys not configured" },
+        { status: 500 }
+      )
+    }
 
-  const receiver = new Receiver({
-    currentSigningKey: keys.currentSigningKey,
-    nextSigningKey: keys.nextSigningKey,
-  })
+    const url = new URL(request.url)
+    const subject = `${url.origin}${url.pathname}`
 
-  try {
-    await receiver.verify({ signature, body, url: subject })
-  } catch (e) {
-    console.error(e)
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
+    const receiver = new Receiver({
+      currentSigningKey: keys.currentSigningKey,
+      nextSigningKey: keys.nextSigningKey,
+    })
+
+    try {
+      await receiver.verify({ signature, body, url: subject })
+    } catch (e) {
+      console.error(e)
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
+    }
   }
 
   let json: unknown

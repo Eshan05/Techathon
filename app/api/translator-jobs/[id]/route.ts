@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
+import { verifySignatureAppRouter } from "@upstash/qstash/nextjs"
+
 import { auth } from "@/lib/auth/auth"
 import {
   getTranslatorJobChunksAfter,
@@ -14,6 +16,48 @@ const querySchema = z.object({
   after: z.coerce.number().int().min(-1).default(-1),
   limit: z.coerce.number().int().min(1).max(25).default(10),
 })
+
+async function resolveJobIdFromCtx(ctx: unknown): Promise<string | null> {
+  const maybeParams = (ctx as any)?.params
+  const params =
+    maybeParams && typeof maybeParams?.then === "function"
+      ? await maybeParams
+      : maybeParams
+  const id = typeof params?.id === "string" ? params.id : null
+  return id && id.trim() ? id.trim() : null
+}
+
+export const POST = verifySignatureAppRouter(
+  async (req: Request, ctx: unknown) => {
+    try {
+      const jobId = await resolveJobIdFromCtx(ctx)
+      if (!jobId) {
+        return NextResponse.json(
+          { error: "Missing job id in route params" },
+          { status: 500 }
+        )
+      }
+
+      const json = await req.json().catch(() => null)
+      if (!json || typeof json !== "object") {
+        return NextResponse.json({ error: "Invalid JSON body" }, { status: 500 })
+      }
+
+      // TODO: handle webhook payload for jobId
+      return NextResponse.json({ ok: true, jobId }, { status: 200 })
+    } catch (e) {
+      console.error(e)
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Server error" },
+        { status: 500 }
+      )
+    }
+  },
+  {
+    currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY,
+    nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY,
+  }
+)
 
 export async function GET(
   req: Request,

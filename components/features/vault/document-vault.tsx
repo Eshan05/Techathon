@@ -3,7 +3,6 @@
 import * as React from "react"
 import {
   FileUp,
-  Files,
   FolderOpen,
   Link2,
   Loader2,
@@ -22,7 +21,6 @@ import {
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
 } from "@/components/ui/drawer"
 import {
   Dropzone,
@@ -147,7 +145,7 @@ function isRetryableUploadError(e: unknown) {
     return false
   }
 
-  const msg = e instanceof Error ? e.message : String(e ?? "")
+  const msg = e instanceof Error ? e.message : typeof e === "string" ? e : ""
   return /fetch|network|timeout|econn|socket|503|502|504/i.test(msg)
 }
 
@@ -382,6 +380,18 @@ export function DocumentVault() {
     return (docs ?? []).find((d) => d.id === voiceDocumentId) ?? null
   }, [docs, voiceDocumentId])
 
+  const vaultStats = React.useMemo(() => {
+    const list = docs ?? []
+
+    return {
+      total: list.length,
+      linked: list.filter((d) => Boolean(d.landParcelId)).length,
+      searchable: list.filter((d) => Boolean(d.ocrExtractedAt)).length,
+      verified: list.filter((d) => Boolean(d.sha256)).length,
+      needsReview: list.filter((d) => !d.sha256 || !d.ocrExtractedAt).length,
+    }
+  }, [docs])
+
   React.useEffect(() => {
     if (!selectedId && filtered.length) setSelectedId(filtered[0].id)
   }, [filtered, selectedId])
@@ -394,11 +404,11 @@ export function DocumentVault() {
   }, [error])
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return
+    if (typeof globalThis.window === "undefined") return
 
     const SR =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition
+      (globalThis.window as any).SpeechRecognition ||
+      (globalThis.window as any).webkitSpeechRecognition
 
     if (!SR) {
       setHasSpeech(false)
@@ -657,38 +667,326 @@ export function DocumentVault() {
     })
   }, [askMutation, voiceDocumentId, voiceLanguage, voiceQuery])
 
+  function renderVerificationPill(doc: DocumentRow | null, compact = false) {
+    const sizeClass = compact ? "text-tiny" : "text-xs"
+
+    if (!doc) {
+      return (
+        <span className={cn("rounded-full border px-2 py-0.5", sizeClass)}>
+          Not started
+        </span>
+      )
+    }
+
+    if (doc.sha256) {
+      return (
+        <span
+          className={cn(
+            "rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200",
+            sizeClass
+          )}
+        >
+          Verified
+        </span>
+      )
+    }
+
+    if (doc.job?.state === "queued") {
+      return (
+        <span
+          className={cn(
+            "rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200",
+            sizeClass
+          )}
+        >
+          Queued
+        </span>
+      )
+    }
+
+    if (doc.job?.state === "processing") {
+      return (
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/40 dark:text-sky-200",
+            sizeClass
+          )}
+        >
+          <Loader2 className="size-3 animate-spin" />
+          Verifying
+        </span>
+      )
+    }
+
+    if (doc.job?.state === "failed") {
+      return (
+        <span
+          className={cn(
+            "rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200",
+            sizeClass
+          )}
+        >
+          Needs retry
+        </span>
+      )
+    }
+
+    return (
+      <span className={cn("rounded-full border px-2 py-0.5", sizeClass)}>
+        Not started
+      </span>
+    )
+  }
+
+  function renderOcrPill(doc: DocumentRow | null, compact = false) {
+    const sizeClass = compact ? "text-tiny" : "text-xs"
+
+    if (!doc) {
+      return (
+        <span className={cn("rounded-full border px-2 py-0.5", sizeClass)}>
+          Not started
+        </span>
+      )
+    }
+
+    if (doc.ocrExtractedAt) {
+      return (
+        <span
+          className={cn(
+            "rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200",
+            sizeClass
+          )}
+        >
+          Searchable
+        </span>
+      )
+    }
+
+    if (doc.ocrJob?.state === "queued") {
+      return (
+        <span
+          className={cn(
+            "rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200",
+            sizeClass
+          )}
+        >
+          OCR queued
+        </span>
+      )
+    }
+
+    if (
+      doc.ocrJob?.state === "extracting" ||
+      doc.ocrJob?.state === "chunking" ||
+      doc.ocrJob?.state === "saving"
+    ) {
+      return (
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200",
+            sizeClass
+          )}
+        >
+          <Loader2 className="size-3 animate-spin" />
+          OCR
+        </span>
+      )
+    }
+
+    if (doc.ocrJob?.state === "failed") {
+      return (
+        <span
+          className={cn(
+            "rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200",
+            sizeClass
+          )}
+        >
+          OCR retry
+        </span>
+      )
+    }
+
+    return (
+      <span className={cn("rounded-full border px-2 py-0.5", sizeClass)}>
+        Not started
+      </span>
+    )
+  }
+
   return (
     <div className="space-y-5 sm:space-y-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <div className="grid size-9 place-items-center rounded-xl border bg-gradient-to-br from-amber-100 to-transparent text-amber-950 dark:from-amber-950/50 dark:text-amber-100">
-              <Files className="size-4" />
+      <section className="relative overflow-hidden rounded-4xl border bg-linear-to-br from-amber-50 via-background to-emerald-50/50 p-4 shadow-sm sm:p-6">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(217,119,6,0.16),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.12),transparent_30%)]" />
+
+        <div className="relative grid gap-5 xl:grid-cols-[1.2fr_.8fr] xl:items-start">
+          <div className="min-w-0 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border bg-background/80 px-3 py-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                Vault
+              </span>
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+                Safe, searchable, linked to land
+              </span>
             </div>
-            <div className="min-w-0">
-              <h1 className="truncate text-base font-semibold">
-                Document vault
+
+            <div className="space-y-2">
+              <h1 className="max-w-2xl text-2xl font-semibold tracking-tight sm:text-3xl">
+                Keep every paper in one place, then find it in seconds.
               </h1>
-              <p className="truncate text-xs text-muted-foreground">
-                Keep every paper searchable and linked to land.
+              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                Add a photo, PDF, or receipt once. Link it to a parcel, run OCR,
+                and open the right document before a bank visit, office visit,
+                or signing.
               </p>
+            </div>
+
+            <div className="grid gap-2 xs:grid-cols-3">
+              <div className="rounded-2xl border bg-background/80 p-3">
+                <div className="flex items-center gap-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  <FileUp className="size-3.5" />
+                  Add once
+                </div>
+                <div className="mt-1 text-sm font-medium">
+                  Store every paper
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Keep land, ID, and notice papers together.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border bg-background/80 p-3">
+                <div className="flex items-center gap-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  <ScanText className="size-3.5" />
+                  Searchable
+                </div>
+                <div className="mt-1 text-sm font-medium">Read text inside</div>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Use OCR so even photos become easy to search.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border bg-background/80 p-3">
+                <div className="flex items-center gap-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  <Mic className="size-3.5" />
+                  Voice help
+                </div>
+                <div className="mt-1 text-sm font-medium">
+                  Ask in your language
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Speak naturally to ask what a paper means.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button
+                className="w-full gap-2 sm:w-auto"
+                onClick={() => setUploadOpen(true)}
+              >
+                <FileUp className="size-4" />
+                Add document
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full gap-2 sm:w-auto"
+                onClick={() => openVoice(null)}
+              >
+                <Mic className="size-4" />
+                Ask in voice
+              </Button>
+              <Button
+                variant="secondary"
+                className="w-full gap-2 sm:w-auto"
+                onClick={() =>
+                  selected ? startOcr(selected.id) : setUploadOpen(true)
+                }
+                disabled={selected ? ocrSchedulingId === selected.id : false}
+              >
+                <ScanText className="size-4" />
+                {selected
+                  ? selected.ocrExtractedAt
+                    ? "Re-run OCR"
+                    : "Make searchable"
+                  : "Scan first paper"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="rounded-2xl border bg-background/80 p-4">
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Vault snapshot
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="rounded-xl border bg-muted/20 p-3">
+                  <div className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    Papers
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {vaultStats.total}
+                  </div>
+                </div>
+                <div className="rounded-xl border bg-muted/20 p-3">
+                  <div className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    Linked
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {vaultStats.linked}
+                  </div>
+                </div>
+                <div className="rounded-xl border bg-muted/20 p-3">
+                  <div className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    Searchable
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {vaultStats.searchable}
+                  </div>
+                </div>
+                <div className="rounded-xl border bg-muted/20 p-3">
+                  <div className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    Need review
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {vaultStats.needsReview}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border bg-background/80 p-4">
+              <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Trust check
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="rounded-xl border bg-muted/20 p-3">
+                  <div className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    Verified
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {vaultStats.verified}
+                  </div>
+                </div>
+                <div className="rounded-xl border bg-muted/20 p-3">
+                  <div className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    Needs OCR
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {Math.max(0, vaultStats.total - vaultStats.searchable)}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <Drawer open={uploadOpen} onOpenChange={setUploadOpen}>
-          <DrawerTrigger asChild>
-            <Button className="w-full gap-2 sm:w-auto">
-              <FileUp className="size-4" />
-              Add document
-            </Button>
-          </DrawerTrigger>
-          <DrawerContent>
+          <DrawerContent className="mx-auto w-full max-w-3xl rounded-t-4xl data-[vaul-drawer-direction=bottom]:mt-16 data-[vaul-drawer-direction=bottom]:max-h-[92vh]">
             <div className="mx-auto w-full max-w-3xl p-4 sm:p-6">
-              <DrawerHeader className="p-0">
+              <DrawerHeader className="border-b px-0 pt-0 pb-4 text-left">
                 <DrawerTitle>Add to vault</DrawerTitle>
                 <DrawerDescription>
-                  Upload and label a document so you can find it later.
+                  Upload and label a document so it is easy to find later.
                 </DrawerDescription>
               </DrawerHeader>
 
@@ -702,21 +1000,26 @@ export function DocumentVault() {
                   }}
                   maxFiles={1}
                   onDrop={(accepted) => handleDrop(accepted)}
+                  className="rounded-2xl border-dashed bg-muted/20 p-4! sm:p-6!"
                 >
                   <DropzoneEmptyState>
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="text-sm font-medium">
-                        Drop a PDF/photo here
+                    <div className="flex flex-col items-center justify-center gap-2 text-center">
+                      <div className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+                        <FileUp className="size-5" />
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        Or tap to choose from your phone.
+                      <div className="text-sm font-semibold">
+                        Drop a paper or tap to choose
+                      </div>
+                      <div className="max-w-sm text-xs leading-relaxed text-muted-foreground">
+                        Add a PDF, photo, or text file from your phone. We will
+                        keep it attached to the right land record.
                       </div>
                     </div>
                   </DropzoneEmptyState>
                   <DropzoneContent>
                     {uploadFile ? (
                       <div className="flex items-center gap-3">
-                        <div className="grid size-10 place-items-center rounded-lg border bg-muted">
+                        <div className="grid size-10 place-items-center rounded-xl border bg-background">
                           <FolderOpen className="size-4" />
                         </div>
                         <div className="min-w-0">
@@ -824,13 +1127,18 @@ export function DocumentVault() {
             </div>
           </DrawerContent>
         </Drawer>
-      </header>
+      </section>
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-12">
-        <section className="rounded-xl border bg-background lg:col-span-4">
-          <div className="border-b p-3 sm:p-4">
+        <section className="overflow-hidden rounded-4xl border bg-background/90 shadow-sm lg:col-span-4">
+          <div className="border-b p-4 sm:p-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm font-medium">Your documents</div>
+              <div>
+                <div className="text-sm font-semibold">Papers in the vault</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  Search by title, document type, or status.
+                </div>
+              </div>
               <Badge variant="secondary" className="w-fit">
                 {(docs ?? []).length}
               </Badge>
@@ -839,7 +1147,7 @@ export function DocumentVault() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search title or type…"
+                placeholder="Search title, type, or note…"
               />
             </div>
 
@@ -850,12 +1158,14 @@ export function DocumentVault() {
                   type="button"
                   onClick={() => setCategory("all")}
                   className={cn(
-                    "inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-xs",
-                    category === "all" ? "bg-muted" : "bg-background"
+                    "inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-xs shadow-sm transition",
+                    category === "all"
+                      ? "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100"
+                      : "bg-background"
                   )}
                 >
                   All
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px]">
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-tiny">
                     {categoryCounts.all ?? 0}
                   </span>
                 </button>
@@ -865,13 +1175,15 @@ export function DocumentVault() {
                     type="button"
                     onClick={() => setCategory(c.id)}
                     className={cn(
-                      "inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-xs",
-                      category === c.id ? "bg-muted" : "bg-background"
+                      "inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-1 text-xs shadow-sm transition",
+                      category === c.id
+                        ? "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100"
+                        : "bg-background"
                     )}
                     title={c.description}
                   >
                     {c.label}
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px]">
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-tiny">
                       {categoryCounts[c.id] ?? 0}
                     </span>
                   </button>
@@ -883,8 +1195,10 @@ export function DocumentVault() {
                   type="button"
                   onClick={() => setCategory("all")}
                   className={cn(
-                    "rounded-lg border px-3 py-2 text-left",
-                    category === "all" ? "bg-muted" : "bg-background"
+                    "rounded-2xl border px-3 py-2 text-left shadow-sm transition",
+                    category === "all"
+                      ? "border-amber-300 bg-amber-50/70 dark:border-amber-900/40 dark:bg-amber-950/20"
+                      : "bg-background"
                   )}
                 >
                   <div className="flex items-center justify-between gap-2 text-xs">
@@ -912,8 +1226,10 @@ export function DocumentVault() {
                       type="button"
                       onClick={() => setCategory(c.id)}
                       className={cn(
-                        "rounded-lg border px-3 py-2 text-left",
-                        category === c.id ? "bg-muted" : "bg-background"
+                        "rounded-2xl border px-3 py-2 text-left shadow-sm transition",
+                        category === c.id
+                          ? "border-amber-300 bg-amber-50/70 dark:border-amber-900/40 dark:bg-amber-950/20"
+                          : "bg-background"
                       )}
                       title={c.description}
                     >
@@ -952,59 +1268,59 @@ export function DocumentVault() {
                         setDetailsOpen(true)
                       }}
                       className={cn(
-                        "w-full rounded-lg p-3 text-left transition",
+                        "w-full rounded-2xl border p-3.5 text-left shadow-sm transition",
                         active
-                          ? "bg-muted"
-                          : "hover:bg-muted/60 focus-visible:bg-muted/60"
+                          ? "border-amber-300 bg-amber-50/70 dark:border-amber-900/40 dark:bg-amber-950/20"
+                          : "bg-background hover:bg-muted/60 focus-visible:bg-muted/60"
                       )}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-medium">
+                          <div className="truncate text-sm font-semibold">
                             {d.title}
                           </div>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            <span className="rounded-md border px-1.5 py-0.5">
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <span className="rounded-full border bg-background px-2 py-0.5">
                               {d.kind}
                             </span>
                             <span>{formatBytes(d.sizeBytes)}</span>
 
                             {d.sha256 ? (
-                              <span className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200">
+                              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200">
                                 Verified
                               </span>
                             ) : d.job?.state === "queued" ? (
-                              <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
+                              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
                                 Queued
                               </span>
                             ) : d.job?.state === "processing" ? (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/40 dark:text-sky-200">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/40 dark:text-sky-200">
                                 <Loader2 className="size-3 animate-spin" />
                                 Verifying
                               </span>
                             ) : d.job?.state === "failed" ? (
-                              <span className="rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
+                              <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
                                 Needs retry
                               </span>
                             ) : null}
 
                             {d.ocrExtractedAt ? (
-                              <span className="rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
+                              <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
                                 Searchable
                               </span>
                             ) : d.ocrJob?.state === "queued" ? (
-                              <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
+                              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
                                 OCR queued
                               </span>
                             ) : d.ocrJob?.state === "extracting" ||
                               d.ocrJob?.state === "chunking" ||
                               d.ocrJob?.state === "saving" ? (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
                                 <Loader2 className="size-3 animate-spin" />
                                 OCR
                               </span>
                             ) : d.ocrJob?.state === "failed" ? (
-                              <span className="rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
+                              <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
                                 OCR retry
                               </span>
                             ) : null}
@@ -1028,17 +1344,29 @@ export function DocumentVault() {
           </ScrollArea>
         </section>
 
-        <section className="rounded-xl border bg-background lg:col-span-8">
-          <div className="border-b p-3 sm:p-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">
-                  {selected ? selected.title : "Select a document"}
+        <section className="overflow-hidden rounded-4xl border bg-background/90 shadow-sm lg:col-span-8">
+          <div className="border-b p-4 sm:p-5">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border bg-muted/40 px-3 py-1 text-tiny font-semibold tracking-wide text-muted-foreground uppercase">
+                    Selected paper
+                  </span>
+                  {selected ? (
+                    <Badge variant="secondary" className="w-fit">
+                      Open
+                    </Badge>
+                  ) : null}
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+
+                <div className="truncate text-base font-semibold sm:text-lg">
+                  {selected ? selected.title : "Choose a paper to see details"}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   {selected ? (
                     <>
-                      <span className="rounded-md border px-1.5 py-0.5">
+                      <span className="rounded-full border bg-background px-2 py-0.5">
                         {selected.kind}
                       </span>
                       <span>{formatBytes(selected.sizeBytes)}</span>
@@ -1048,65 +1376,27 @@ export function DocumentVault() {
                           {new Date(selected.issuedAt).toLocaleDateString()}
                         </span>
                       ) : null}
-
-                      {selected.sha256 ? (
-                        <span className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200">
-                          Verified
-                        </span>
-                      ) : selected.job?.state === "queued" ? (
-                        <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
-                          Queued
-                        </span>
-                      ) : selected.job?.state === "processing" ? (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/40 dark:text-sky-200">
-                          <Loader2 className="size-3 animate-spin" />
-                          Verifying
-                        </span>
-                      ) : selected.job?.state === "failed" ? (
-                        <span className="rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
-                          Needs retry
-                        </span>
-                      ) : null}
-
-                      {selected.ocrExtractedAt ? (
-                        <span className="rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
-                          Searchable
-                        </span>
-                      ) : selected.ocrJob?.state === "queued" ? (
-                        <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
-                          OCR queued
-                        </span>
-                      ) : selected.ocrJob?.state === "extracting" ||
-                        selected.ocrJob?.state === "chunking" ||
-                        selected.ocrJob?.state === "saving" ? (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
-                          <Loader2 className="size-3 animate-spin" />
-                          OCR
-                        </span>
-                      ) : selected.ocrJob?.state === "failed" ? (
-                        <span className="rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
-                          OCR retry
-                        </span>
-                      ) : null}
-
-                      {selectedTags.map((t) => (
+                      {selectedTags.map((tag) => (
                         <Badge
-                          key={t}
+                          key={tag}
                           variant="secondary"
-                          className="h-5 px-1.5 text-[11px]"
+                          className="h-5 px-1.5 text-tiny"
                         >
-                          {t}
+                          {tag}
                         </Badge>
                       ))}
                     </>
                   ) : (
-                    ""
+                    <span>
+                      Pick a document to review verification, OCR, and the
+                      linked parcel.
+                    </span>
                   )}
                 </div>
               </div>
 
               {selected ? (
-                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <div className="grid grid-cols-2 gap-2 xs:grid-cols-2 sm:flex sm:flex-wrap sm:justify-end">
                   {selected.url ? (
                     <Button
                       asChild
@@ -1166,7 +1456,9 @@ export function DocumentVault() {
                     onSaved={(next) => {
                       qc.setQueryData<DocumentRow[]>(["documents"], (prev) => {
                         const list = Array.isArray(prev) ? prev : []
-                        return list.map((x) => (x.id === next.id ? next : x))
+                        return list.map((item) =>
+                          item.id === next.id ? next : item
+                        )
                       })
                     }}
                   />
@@ -1187,9 +1479,9 @@ export function DocumentVault() {
                           Delete this document?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          This removes the vault index entry. (If you want to
+                          This removes the vault index entry. If you want to
                           also delete the uploaded file from storage, we can add
-                          that next.)
+                          that next.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -1201,16 +1493,18 @@ export function DocumentVault() {
                               toast.success("Deleted")
                               qc.setQueryData<DocumentRow[]>(
                                 ["documents"],
-                                (p) =>
-                                  (Array.isArray(p) ? p : []).filter(
-                                    (x) => x.id !== selected.id
+                                (prev) =>
+                                  (Array.isArray(prev) ? prev : []).filter(
+                                    (item) => item.id !== selected.id
                                   )
                               )
                               setSelectedId(null)
-                            } catch (e) {
-                              console.error(e)
+                            } catch (error) {
+                              console.error(error)
                               toast.error(
-                                e instanceof Error ? e.message : "Delete failed"
+                                error instanceof Error
+                                  ? error.message
+                                  : "Delete failed"
                               )
                             }
                           }}
@@ -1221,17 +1515,28 @@ export function DocumentVault() {
                     </AlertDialogContent>
                   </AlertDialog>
                 </div>
-              ) : null}
+              ) : (
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 sm:w-auto"
+                  onClick={() => setUploadOpen(true)}
+                >
+                  <FileUp className="size-4" />
+                  Add document
+                </Button>
+              )}
             </div>
           </div>
 
-          <div className="p-3 sm:p-4">
+          <div className="p-4 sm:p-5">
             {selected ? (
-              <div className="space-y-3">
-                <div className="grid gap-2 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Linked parcel</span>
-                    <span className="truncate">
+              <div className="space-y-4">
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-2xl border bg-muted/20 p-4">
+                    <div className="text-tiny font-semibold tracking-wide text-muted-foreground uppercase">
+                      Linked parcel
+                    </div>
+                    <div className="mt-2 text-sm font-medium wrap-break-word">
                       {selected.landParcelId
                         ? parcelLabel(
                             (parcels ?? []).find(
@@ -1239,136 +1544,189 @@ export function DocumentVault() {
                             ) ?? ({ id: selected.landParcelId } as any)
                           )
                         : "Unlinked"}
-                    </span>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      Match this paper to the correct land record once.
+                    </p>
                   </div>
 
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Verification</span>
-                    <span className="flex items-center gap-2">
-                      {selected.sha256 ? (
-                        <span className="rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-xs text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200">
-                          Verified
-                        </span>
-                      ) : selected.job?.state === "queued" ? (
-                        <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
-                          Queued
-                        </span>
-                      ) : selected.job?.state === "processing" ? (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-xs text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/40 dark:text-sky-200">
-                          <Loader2 className="size-3 animate-spin" />
-                          Verifying
-                        </span>
-                      ) : selected.job?.state === "failed" ? (
-                        <span className="rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-xs text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
-                          Needs retry
-                        </span>
-                      ) : (
-                        <span className="rounded-md border px-1.5 py-0.5 text-xs">
-                          Not started
-                        </span>
-                      )}
-                    </span>
+                  <div className="rounded-2xl border bg-muted/20 p-4">
+                    <div className="text-tiny font-semibold tracking-wide text-muted-foreground uppercase">
+                      Verification
+                    </div>
+                    <div className="mt-2">
+                      {renderVerificationPill(selected)}
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      Check this before you trust the file in an office or bank.
+                    </p>
                   </div>
 
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">OCR</span>
-                    <span className="flex items-center gap-2">
-                      {selected.ocrExtractedAt ? (
-                        <span className="rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-xs text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
-                          Searchable
-                        </span>
-                      ) : selected.ocrJob?.state === "queued" ? (
-                        <span className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-200">
-                          OCR queued
-                        </span>
-                      ) : selected.ocrJob?.state === "extracting" ||
-                        selected.ocrJob?.state === "chunking" ||
-                        selected.ocrJob?.state === "saving" ? (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-xs text-orange-900 dark:border-orange-900/40 dark:bg-orange-950/30 dark:text-orange-200">
-                          <Loader2 className="size-3 animate-spin" />
-                          OCR
-                        </span>
-                      ) : selected.ocrJob?.state === "failed" ? (
-                        <span className="rounded-md border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-xs text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-200">
-                          OCR failed
-                        </span>
-                      ) : (
-                        <span className="rounded-md border px-1.5 py-0.5 text-xs">
-                          Not started
-                        </span>
-                      )}
+                  <div className="rounded-2xl border bg-muted/20 p-4">
+                    <div className="text-tiny font-semibold tracking-wide text-muted-foreground uppercase">
+                      OCR
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {renderOcrPill(selected)}
                       {selected.ocrCharCount ? (
                         <span className="text-xs text-muted-foreground">
                           {Intl.NumberFormat().format(selected.ocrCharCount)}{" "}
                           chars
                         </span>
                       ) : null}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Uploaded</span>
-                    <span>
-                      {selected.createdAt
-                        ? new Date(selected.createdAt).toLocaleString()
-                        : "—"}
-                    </span>
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      Makes the document searchable and easier to ask about.
+                    </p>
                   </div>
                 </div>
 
-                {selected.sha256 ? (
-                  <div className="rounded-lg border bg-muted/20 p-3">
-                    <div className="text-xs text-muted-foreground">
-                      Fingerprint (sha256)
+                <div className="grid gap-3 xl:grid-cols-[1fr_.85fr]">
+                  <div className="space-y-3 rounded-2xl border bg-background p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold">
+                          Document details
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Quick facts for bank, office, or family.
+                        </div>
+                      </div>
+                      <Badge variant="secondary">{selected.kind}</Badge>
                     </div>
-                    <div className="mt-1 font-mono text-xs break-all">
-                      {selected.sha256}
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl border bg-muted/10 p-3">
+                        <div className="text-xs font-medium text-muted-foreground">
+                          File size
+                        </div>
+                        <div className="mt-1 text-sm font-medium">
+                          {formatBytes(selected.sizeBytes)}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border bg-muted/10 p-3">
+                        <div className="text-xs font-medium text-muted-foreground">
+                          Uploaded
+                        </div>
+                        <div className="mt-1 text-sm font-medium">
+                          {selected.createdAt
+                            ? new Date(selected.createdAt).toLocaleString()
+                            : "—"}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border bg-muted/10 p-3">
+                        <div className="text-xs font-medium text-muted-foreground">
+                          Issued date
+                        </div>
+                        <div className="mt-1 text-sm font-medium">
+                          {selected.issuedAt
+                            ? new Date(selected.issuedAt).toLocaleDateString()
+                            : "—"}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border bg-muted/10 p-3">
+                        <div className="text-xs font-medium text-muted-foreground">
+                          File type
+                        </div>
+                        <div className="mt-1 text-sm font-medium wrap-break-word">
+                          {selected.mimeType ?? "—"}
+                        </div>
+                      </div>
                     </div>
+
+                    {selected.sha256 ? (
+                      <div className="rounded-xl border bg-muted/20 p-3">
+                        <div className="text-xs font-medium text-muted-foreground">
+                          Fingerprint (sha256)
+                        </div>
+                        <div className="mt-1 font-mono text-xs break-all">
+                          {selected.sha256}
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        className="w-full"
+                        disabled={
+                          schedulingId === selected.id ||
+                          selected.job?.state === "processing"
+                        }
+                        onClick={() => startVerification(selected.id)}
+                      >
+                        {selected.job?.state === "failed"
+                          ? "Retry verification"
+                          : "Verify now"}
+                      </Button>
+                    )}
+
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      disabled={
+                        ocrSchedulingId === selected.id ||
+                        selected.ocrJob?.state === "extracting" ||
+                        selected.ocrJob?.state === "chunking" ||
+                        selected.ocrJob?.state === "saving"
+                      }
+                      onClick={() => startOcr(selected.id)}
+                    >
+                      <ScanText className="size-4" />
+                      {selected.ocrExtractedAt
+                        ? "Re-run OCR"
+                        : "Make searchable (OCR)"}
+                    </Button>
                   </div>
-                ) : (
-                  <Button
-                    variant="secondary"
-                    className="w-full"
-                    disabled={
-                      schedulingId === selected.id ||
-                      selected.job?.state === "processing"
-                    }
-                    onClick={() => startVerification(selected.id)}
-                  >
-                    {selected.job?.state === "failed"
-                      ? "Retry verification"
-                      : "Verify now"}
-                  </Button>
-                )}
 
-                <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  disabled={
-                    ocrSchedulingId === selected.id ||
-                    selected.ocrJob?.state === "extracting" ||
-                    selected.ocrJob?.state === "chunking" ||
-                    selected.ocrJob?.state === "saving"
-                  }
-                  onClick={() => startOcr(selected.id)}
-                >
-                  <ScanText className="size-4" />
-                  {selected.ocrExtractedAt
-                    ? "Re-run OCR"
-                    : "Make searchable (OCR)"}
-                </Button>
+                  <div className="rounded-2xl border bg-amber-50/60 p-4 dark:bg-amber-950/10">
+                    <div className="text-tiny font-semibold tracking-wide text-muted-foreground uppercase">
+                      Trust tip
+                    </div>
+                    <div className="mt-2 text-sm leading-relaxed">
+                      If someone asks you to sign, open this document and check
+                      risky clauses before you agree. Keep a receipt or photo if
+                      something feels off.
+                    </div>
 
-                <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs text-muted-foreground">Trust tip</div>
-                  <div className="mt-1 text-sm">
-                    If someone asks you to sign, open this document and use the
-                    analyzer to highlight risky clauses before you agree.
+                    <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+                      <div>
+                        Use OCR before meetings so text stays searchable.
+                      </div>
+                      <div>
+                        Open the document on your phone or in the browser.
+                      </div>
+                      <div>Link it to the right land parcel once.</div>
+                    </div>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">
-                Pick a document from the left.
+              <div className="rounded-2xl border border-dashed bg-muted/20 p-6">
+                <div className="text-sm font-semibold text-foreground">
+                  No paper selected
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  Choose a document from the left or add a new one.
+                </div>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    onClick={() => setUploadOpen(true)}
+                    className="w-full gap-2 sm:w-auto"
+                  >
+                    <FileUp className="size-4" />
+                    Add document
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => openVoice(null)}
+                    className="w-full gap-2 sm:w-auto"
+                  >
+                    <Mic className="size-4" />
+                    Ask in voice
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -1456,7 +1814,7 @@ export function DocumentVault() {
                     value={voiceLanguage}
                     onValueChange={setVoiceLanguage}
                   >
-                    <SelectTrigger className="h-8 w-full sm:w-[180px]">
+                    <SelectTrigger className="h-8 w-full sm:w-45">
                       <SelectValue placeholder="Language" />
                     </SelectTrigger>
                     <SelectContent>

@@ -31,7 +31,7 @@ export default function NFB() {
               </Button>
             </Link>
             <Link
-              href="mailto:tpo.rmdssoe@sinhgad.edu"
+              href="mailto:contact@kisanvakil.com"
               className="w-full sm:w-auto"
             >
               <Button variant="outline" className="gap-2">
