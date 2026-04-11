@@ -7,6 +7,7 @@ import {
   isRetryableSarvamTranslateError,
 } from "@/lib/ai/sarvam-errors"
 import { extractTextWithSarvamDocumentIntelligence } from "@/lib/ai/sarvam-document-intelligence"
+import { toUserMessage } from "@/lib/errors"
 
 const client = new SarvamAIClient({
   apiSubscriptionKey: process.env.SARVAM_API_KEY,
@@ -186,10 +187,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ text: translatedText })
   } catch (error: unknown) {
     console.error("Translation error:", error)
-
-    const message =
-      error instanceof Error ? error.message : "Something went wrong"
-
-    return NextResponse.json({ error: message }, { status: 500 })
+    const msg = toUserMessage(error, {
+      fallbackTitle: "Couldn’t translate that document",
+      fallbackDescription: "Try a clearer photo/PDF and retry.",
+      context: "api.documentTranslations",
+      status: 500,
+    })
+    return NextResponse.json(
+      { error: msg.title, description: msg.description, code: msg.code },
+      { status: 500 }
+    )
   }
 }

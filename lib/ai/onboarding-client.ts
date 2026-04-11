@@ -1,5 +1,7 @@
 import { toast } from "sonner"
 
+import { toUserMessage } from "@/lib/errors"
+
 export interface OnboardingStep {
   step: 1 | 2 | 3 | 4
   title: string
@@ -44,8 +46,14 @@ export async function uploadIdentityDocument(
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      toast.error(error.message || "Failed to upload identity document")
+      const error = await response.json().catch(() => null)
+      const msg = toUserMessage(error, {
+        fallbackTitle: "Couldn’t upload your ID",
+        fallbackDescription: "Please try again in a moment.",
+        context: "onboarding.identity",
+        status: response.status,
+      })
+      toast.error(msg.title, { description: msg.description })
       return null
     }
 
@@ -72,8 +80,14 @@ export async function submitLandVerification(
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      toast.error(error.message || "Failed to verify land record")
+      const error = await response.json().catch(() => null)
+      const msg = toUserMessage(error, {
+        fallbackTitle: "Couldn’t verify the land record",
+        fallbackDescription: "Please try again in a moment.",
+        context: "onboarding.land",
+        status: response.status,
+      })
+      toast.error(msg.title, { description: msg.description })
       return null
     }
 
@@ -98,8 +112,14 @@ export async function submitFaceVerification(
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      toast.error(error.message || "Failed to verify face")
+      const error = await response.json().catch(() => null)
+      const msg = toUserMessage(error, {
+        fallbackTitle: "Couldn’t verify your face",
+        fallbackDescription: "Please try again in a moment.",
+        context: "onboarding.face",
+        status: response.status,
+      })
+      toast.error(msg.title, { description: msg.description })
       return null
     }
 

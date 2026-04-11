@@ -5,6 +5,7 @@ import { z } from "zod"
 import { getQstashClient } from "@/lib/qstash/client"
 import { getQstashSigningKeys } from "@/lib/qstash/keys"
 import { siteConfig } from "@/lib/site"
+import { toUserMessage } from "@/lib/errors"
 import {
   getTranslatorJobInsightChunk,
   getTranslatorJobOutputChunk,
@@ -408,7 +409,16 @@ export async function POST(request: Request) {
     existing = await getTranslatorJobStatus(userId, jobId)
   } catch (e) {
     if (e instanceof TranslatorJobsStoreMisconfiguredError) {
-      return NextResponse.json({ error: e.message }, { status: 500 })
+      const msg = toUserMessage(e, {
+        fallbackTitle: "This service isn’t available right now.",
+        fallbackDescription: "Please try again later.",
+        context: "queue.translatorRuns.store",
+        status: 500,
+      })
+      return NextResponse.json(
+        { error: msg.title, description: msg.description, code: msg.code },
+        { status: 500 }
+      )
     }
     throw e
   }
@@ -672,18 +682,28 @@ export async function POST(request: Request) {
   } catch (e) {
     console.error(e)
 
+    const msg = toUserMessage(e, {
+      fallbackTitle: "Translation failed",
+      fallbackDescription: "Please try again.",
+      context: "queue.translatorRuns",
+      status: 500,
+    })
+
     const job = await getTranslatorJobStatus(userId, jobId)
     if (job) {
       await setTranslatorJobStatus(userId, jobId, {
         ...job,
         state: "failed",
         updatedAt: Date.now(),
-        message: e instanceof Error ? e.message : "Processing failed",
+        message: msg.title,
         messageId,
         retryCount: retryCount || undefined,
       })
     }
 
-    return NextResponse.json({ error: "Processing failed" }, { status: 500 })
+    return NextResponse.json(
+      { error: msg.title, description: msg.description, code: msg.code },
+      { status: 500 }
+    )
   }
 }

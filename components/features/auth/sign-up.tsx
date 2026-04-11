@@ -23,6 +23,8 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { toUserMessage } from "@/lib/errors"
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -138,7 +140,11 @@ export default function SignUp() {
         },
         {
           onError(context) {
-            toast.error(context.error.message || t("createFailed"))
+            const msg = toUserMessage(context?.error ?? context, {
+              fallbackTitle: t("createFailed"),
+              context: "auth.signUp",
+            })
+            toast.error(msg.title, { description: msg.description })
           },
         }
       )
@@ -160,11 +166,11 @@ export default function SignUp() {
         toast.success(t("created"))
         router.push(callbackURL)
       } catch (uploadError) {
-        if (uploadError instanceof Error) {
-          toast.error(uploadError.message)
-        } else {
-          toast.error(t("imageUploadFailed"))
-        }
+        const msg = toUserMessage(uploadError, {
+          fallbackTitle: t("imageUploadFailed"),
+          context: "auth.signUp.avatar",
+        })
+        toast.error(msg.title, { description: msg.description })
 
         toast.success(t("created"))
         router.push(callbackURL)

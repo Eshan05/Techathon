@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { Loader2, ShieldCheckIcon } from "lucide-react"
 import { toast } from "sonner"
 
+import { toUserMessage } from "@/lib/errors"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -42,7 +43,11 @@ export default function TwoFactor() {
             router.push(getCallbackURL(params))
           },
           onError(ctx) {
-            toast.error(ctx.error.message || t("verifyFailed"))
+            const msg = toUserMessage(ctx?.error ?? ctx, {
+              fallbackTitle: t("verifyFailed"),
+              context: "auth.2fa.verify",
+            })
+            toast.error(msg.title, { description: msg.description })
           },
         },
       })

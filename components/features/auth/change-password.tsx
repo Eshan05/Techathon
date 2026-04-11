@@ -3,6 +3,7 @@
 import React, { useState } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
+import { toUserMessage } from "@/lib/errors"
 import { authClient as client } from "@/lib/auth-client"
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/derived/password-input"
@@ -70,7 +71,11 @@ export default function ChangePassword() {
     })
     setLoading(false)
     if (res.error) {
-      toast.error(res.error.message || "Couldn't change your password")
+      const msg = toUserMessage(res.error, {
+        fallbackTitle: "Couldn't change your password",
+        context: "auth.changePassword",
+      })
+      toast.error(msg.title, { description: msg.description })
     } else {
       setOpen(false)
       toast.success("Password changed successfully")

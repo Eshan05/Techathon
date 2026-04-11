@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 
+import { toUserMessage } from "@/lib/errors"
+
 type PostalOffice = {
   Name?: string
   District?: string
@@ -100,9 +102,16 @@ export async function GET(
       },
     })
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to lookup pincode"
+    const msg = toUserMessage(error, {
+      fallbackTitle: "Couldn’t look up that pincode",
+      fallbackDescription: "Please try again.",
+      context: "api.pincodes.lookup",
+      status: 500,
+    })
 
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json(
+      { error: msg.title, description: msg.description, code: msg.code },
+      { status: 500 }
+    )
   }
 }

@@ -37,6 +37,8 @@ import { useForm } from "react-hook-form"
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 
+import { toUserMessage } from "@/lib/errors"
+
 type SupportNeed =
   | "land-records"
   | "schemes"
@@ -153,7 +155,12 @@ export default function EditProfileItem({ session }: { session: any }) {
   useEffect(() => {
     if (error) {
       console.error(error)
-      toast.error("Error loading profile")
+      const msg = toUserMessage(error, {
+        fallbackTitle: "Couldn’t load your profile",
+        fallbackDescription: "Please try again.",
+        context: "profile.load",
+      })
+      toast.error(msg.title, { description: msg.description })
     }
   }, [error])
 
@@ -164,7 +171,12 @@ export default function EditProfileItem({ session }: { session: any }) {
       setOpen(false)
     } catch (e) {
       console.error(e)
-      toast.error(e instanceof Error ? e.message : "Failed to save")
+      const msg = toUserMessage(e, {
+        fallbackTitle: "Couldn’t save your profile",
+        fallbackDescription: "Please try again.",
+        context: "profile.save",
+      })
+      toast.error(msg.title, { description: msg.description })
     }
   }
 

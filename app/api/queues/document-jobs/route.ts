@@ -10,6 +10,7 @@ import {
   setDocumentJobStatus,
   sha256Base64Url,
 } from "@/lib/qstash/document-jobs"
+import { toUserMessage } from "@/lib/errors"
 
 export const runtime = "nodejs"
 
@@ -131,13 +132,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error(e)
+
+    const msg = toUserMessage(e, {
+      fallbackTitle: "Document processing failed",
+      fallbackDescription: "Please try again.",
+      context: "queue.documentJobs",
+      status: 500,
+    })
     await setDocumentJobStatus(userId, documentId, {
       state: "failed",
       updatedAt: Date.now(),
-      message: e instanceof Error ? e.message : "Processing failed",
+      message: msg.title,
       messageId,
     })
 
-    return NextResponse.json({ error: "Processing failed" }, { status: 500 })
+    return NextResponse.json(
+      { error: msg.title, description: msg.description, code: msg.code },
+      { status: 500 }
+    )
   }
 }
