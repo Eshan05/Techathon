@@ -5,6 +5,13 @@ import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 
+export class TranslatorJobsStoreMisconfiguredError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "TranslatorJobsStoreMisconfiguredError"
+  }
+}
+
 export type TranslatorJobState =
   | "queued"
   | "extracting"
@@ -92,6 +99,24 @@ function shouldPreferRedis() {
   const isProd = process.env.NODE_ENV === "production"
   const isVercel = Boolean(process.env.VERCEL)
   return isProd || isVercel
+}
+
+function shouldFailIfRedisMissing() {
+  const forced = (process.env.TRANSLATOR_JOBS_STORE ?? "").trim().toLowerCase()
+  if (forced === "local") return false
+  if (forced === "redis") return true
+
+  // Default: missing Redis is fatal on Vercel/production because
+  // local /tmp storage isn't shared across serverless instances.
+  const isProd = process.env.NODE_ENV === "production"
+  const isVercel = Boolean(process.env.VERCEL)
+  return isProd || isVercel
+}
+
+function missingRedisError() {
+  return new TranslatorJobsStoreMisconfiguredError(
+    "Translator jobs storage requires Upstash Redis in production. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN (or set TRANSLATOR_JOBS_STORE=local for single-instance dev)."
+  )
 }
 
 function fsPathForKey(key: string) {
@@ -202,6 +227,7 @@ export async function setTranslatorJobStatus(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     await localSet(jobKey(userId, jobId), JSON.stringify(status))
     return
   }
@@ -224,6 +250,7 @@ export async function getTranslatorJobStatus(userId: string, jobId: string) {
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     const raw = await localGet(jobKey(userId, jobId))
     if (!raw) return null
     try {
@@ -256,6 +283,7 @@ export async function setTranslatorJobSourceChunk(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     await localSet(srcKey(userId, jobId, index), JSON.stringify(chunk))
     return
   }
@@ -282,6 +310,7 @@ export async function getTranslatorJobSourceChunk(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     const raw = await localGet(srcKey(userId, jobId, index))
     if (!raw) return null
     try {
@@ -313,6 +342,7 @@ export async function setTranslatorJobOutputChunk(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     await localSet(outKey(userId, jobId, chunk.index), JSON.stringify(chunk))
     return
   }
@@ -339,6 +369,7 @@ export async function getTranslatorJobOutputChunk(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     const raw = await localGet(outKey(userId, jobId, index))
     if (!raw) return null
     try {
@@ -371,6 +402,7 @@ export async function setTranslatorJobInsightChunk(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     await localSet(insKey(userId, jobId, index), JSON.stringify(insight))
     return
   }
@@ -418,6 +450,7 @@ export async function getTranslatorJobInsightChunk(
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     const raw = await localGet(insKey(userId, jobId, index))
     if (!raw) return null
 
@@ -547,6 +580,7 @@ export async function getTranslatorJobChunksAfter(opts: {
 
   const redis = getUpstashRedis()
   if (!redis) {
+    if (shouldFailIfRedisMissing()) throw missingRedisError()
     const start = Math.max(-1, opts.after) + 1
     const end = start + Math.max(1, opts.limit) - 1
     const indexes = Array.from(

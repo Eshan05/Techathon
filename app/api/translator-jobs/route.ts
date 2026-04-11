@@ -15,6 +15,7 @@ import {
   type TranslatorInsight,
   type TranslatorJobStatus,
   type TranslatorOcrPreference,
+  TranslatorJobsStoreMisconfiguredError,
 } from "@/lib/qstash/translator-jobs"
 
 import { SarvamAIClient } from "sarvamai"
@@ -579,7 +580,14 @@ export async function POST(req: Request) {
     analyzedChunks: 0,
   }
 
-  await setTranslatorJobStatus(userId, jobId, status)
+  try {
+    await setTranslatorJobStatus(userId, jobId, status)
+  } catch (e) {
+    if (e instanceof TranslatorJobsStoreMisconfiguredError) {
+      return NextResponse.json({ error: e.message }, { status: 500 })
+    }
+    throw e
+  }
 
   // In local dev, QStash cannot deliver to loopback destinations (localhost/::1).
   // Instead, run the pipeline locally so the analyzer still works without a tunnel.

@@ -17,6 +17,7 @@ import {
   type TranslatorInsight,
   type TranslatorJobStatus,
   type TranslatorOcrPreference,
+  TranslatorJobsStoreMisconfiguredError,
 } from "@/lib/qstash/translator-jobs"
 
 import { SarvamAIClient } from "sarvamai"
@@ -370,7 +371,15 @@ export async function POST(request: Request) {
   const messageId = request.headers.get("upstash-message-id") ?? undefined
   const retryCount = Number(request.headers.get("upstash-retried") ?? "0")
 
-  const existing = await getTranslatorJobStatus(userId, jobId)
+  let existing: Awaited<ReturnType<typeof getTranslatorJobStatus>>
+  try {
+    existing = await getTranslatorJobStatus(userId, jobId)
+  } catch (e) {
+    if (e instanceof TranslatorJobsStoreMisconfiguredError) {
+      return NextResponse.json({ error: e.message }, { status: 500 })
+    }
+    throw e
+  }
   if (!existing) {
     return NextResponse.json({ ok: true })
   }

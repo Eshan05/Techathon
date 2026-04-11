@@ -27,7 +27,9 @@ TURSO_DATABASE_URL="file:./.data/auth.db"
 GROQ_API_KEY="..."
 AI_CHAT_DEFAULT_PROFILE="kisan-vakil" # or "default"
 
-# Optional: Upstash Redis (for caching)
+# Upstash Redis
+# - Required on Vercel/production for translator job polling + background processing state.
+# - Also used for caching.
 UPSTASH_REDIS_REST_URL="..."
 UPSTASH_REDIS_REST_TOKEN="..."
 ```

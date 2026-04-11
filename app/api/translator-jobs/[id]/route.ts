@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth/auth"
 import {
   getTranslatorJobChunksAfter,
   getTranslatorJobStatus,
+  TranslatorJobsStoreMisconfiguredError,
 } from "@/lib/qstash/translator-jobs"
 
 export const runtime = "nodejs"
@@ -37,7 +38,15 @@ export async function GET(
   }
 
   const userId = session.user.id
-  const status = await getTranslatorJobStatus(userId, jobId)
+  let status: Awaited<ReturnType<typeof getTranslatorJobStatus>>
+  try {
+    status = await getTranslatorJobStatus(userId, jobId)
+  } catch (e) {
+    if (e instanceof TranslatorJobsStoreMisconfiguredError) {
+      return NextResponse.json({ error: e.message }, { status: 500 })
+    }
+    throw e
+  }
 
   if (!status) {
     if (process.env.NODE_ENV !== "production") {
@@ -46,12 +55,25 @@ export async function GET(
     return NextResponse.json({ error: "Job not found" }, { status: 404 })
   }
 
-  const { outputs, insights } = await getTranslatorJobChunksAfter({
-    userId,
-    jobId,
-    after: parsedQuery.data.after,
-    limit: parsedQuery.data.limit,
-  })
+  let outputs: Awaited<
+    ReturnType<typeof getTranslatorJobChunksAfter>
+  >["outputs"]
+  let insights: Awaited<
+    ReturnType<typeof getTranslatorJobChunksAfter>
+  >["insights"]
+  try {
+    ;({ outputs, insights } = await getTranslatorJobChunksAfter({
+      userId,
+      jobId,
+      after: parsedQuery.data.after,
+      limit: parsedQuery.data.limit,
+    }))
+  } catch (e) {
+    if (e instanceof TranslatorJobsStoreMisconfiguredError) {
+      return NextResponse.json({ error: e.message }, { status: 500 })
+    }
+    throw e
+  }
 
   const nextAfter = Math.max(
     parsedQuery.data.after,
