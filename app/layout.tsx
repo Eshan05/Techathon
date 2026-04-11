@@ -19,6 +19,11 @@ const notoSerifDev = Noto_Serif_Devanagari({
   variable: "--font-devanagari",
 })
 
+export const metadata = {
+  title: "Kisan Vakil | Techathon",
+  description: "Your AI-powered legal assistant",
+}
+
 export default async function RootLayout({
   children,
 }: Readonly<{
