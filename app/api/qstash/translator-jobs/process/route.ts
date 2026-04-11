@@ -31,11 +31,6 @@ import { extractTextWithSarvamDocumentIntelligence } from "@/lib/ai/sarvam-docum
 import { getChatModel, resolveChatProfile } from "@/lib/ai"
 import { generateText } from "ai"
 
-// pdfjs-dist doesn't ship perfect ESM typings for this path in all setups.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
-
 export const runtime = "nodejs"
 
 const payloadSchema = z
@@ -111,32 +106,6 @@ function splitIntoChunks(text: string, maxChars: number): string[] {
 
   flush()
   return chunks
-}
-
-async function extractPdfPagesText(
-  bytes: Uint8Array,
-  onPage?: (info: {
-    pageNumber: number
-    totalPages: number
-  }) => void | Promise<void>
-): Promise<string[]> {
-  const task = getDocument({ data: bytes, disableWorker: true } as any)
-  const pdf = await task.promise
-
-  const pages: string[] = []
-  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
-    await onPage?.({ pageNumber: pageNum, totalPages: pdf.numPages })
-    const page = await pdf.getPage(pageNum)
-    const content = await page.getTextContent()
-    const strings = (content.items as any[])
-      .map((it) => (typeof it?.str === "string" ? it.str : ""))
-      .map((s) => s.replace(/\s+/g, " ").trim())
-      .filter(Boolean)
-
-    pages.push(strings.join(" "))
-  }
-
-  return pages
 }
 
 async function extractTextWithSarvamOcr(opts: {
@@ -442,53 +411,21 @@ export async function POST(request: Request) {
       const chunks: Array<{ pageNumber: number; text: string }> = []
 
       if (mime.includes("pdf")) {
-        try {
-          const pages = await extractPdfPagesText(buf, async (info) => {
+        const extracted = await extractTextWithSarvamOcr({
+          bytes: buf,
+          mimeType: "application/pdf",
+          language: existing.targetLanguage,
+          preference: existing.ocrPreference,
+          bumpStatus: async (message) => {
             await bump({
               state: "extracting",
               stage: "extracting",
-              message: `Reading page ${info.pageNumber}/${info.totalPages}…`,
+              message,
             })
-          })
-
-          const meaningfulPdfText = pages.join(" ").replace(/\s+/g, " ").trim()
-
-          if (meaningfulPdfText.length < 20) {
-            throw new Error("PDF appears scanned (no embedded text)")
-          }
-
-          for (
-            let pageNumber = 1;
-            pageNumber <= pages.length;
-            pageNumber += 1
-          ) {
-            const pageText = pages[pageNumber - 1] ?? ""
-            const parts = splitIntoChunks(pageText, maxChars)
-
-            if (!parts.length) {
-              chunks.push({ pageNumber, text: "" })
-              continue
-            }
-
-            parts.forEach((t) => chunks.push({ pageNumber, text: t }))
-          }
-        } catch (e) {
-          const extracted = await extractTextWithSarvamOcr({
-            bytes: buf,
-            mimeType: "application/pdf",
-            language: existing.targetLanguage,
-            preference: existing.ocrPreference,
-            bumpStatus: async (message) => {
-              await bump({
-                state: "extracting",
-                stage: "extracting",
-                message,
-              })
-            },
-          })
-          const parts = splitIntoChunks(extracted, maxChars)
-          parts.forEach((t) => chunks.push({ pageNumber: 1, text: t }))
-        }
+          },
+        })
+        const parts = splitIntoChunks(extracted, maxChars)
+        parts.forEach((t) => chunks.push({ pageNumber: 1, text: t }))
       } else if (mime.startsWith("text/")) {
         const text = new TextDecoder().decode(buf)
         const parts = splitIntoChunks(text, maxChars)

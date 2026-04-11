@@ -28,11 +28,6 @@ import {
 import { getChatModel, resolveChatProfile } from "@/lib/ai"
 import { generateText } from "ai"
 
-// pdfjs-dist doesn't ship perfect ESM typings for this path in all setups.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
-
 export const runtime = "nodejs"
 
 const sarvam = new SarvamAIClient({
@@ -99,32 +94,6 @@ function splitIntoChunks(text: string, maxChars: number): string[] {
 
   flush()
   return chunks
-}
-
-async function extractPdfPagesText(
-  bytes: Uint8Array,
-  onPage?: (info: {
-    pageNumber: number
-    totalPages: number
-  }) => void | Promise<void>
-): Promise<string[]> {
-  const task = getDocument({ data: bytes, disableWorker: true } as any)
-  const pdf = await task.promise
-
-  const pages: string[] = []
-  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
-    await onPage?.({ pageNumber: pageNum, totalPages: pdf.numPages })
-    const page = await pdf.getPage(pageNum)
-    const content = await page.getTextContent()
-    const strings = (content.items as any[])
-      .map((it) => (typeof it?.str === "string" ? it.str : ""))
-      .map((s) => s.replace(/\s+/g, " ").trim())
-      .filter(Boolean)
-
-    pages.push(strings.join(" "))
-  }
-
-  return pages
 }
 
 async function translateChunk(opts: {
@@ -356,82 +325,34 @@ async function processTranslatorJobLocally(opts: {
   let pageCount = 1
 
   if (mime.includes("pdf")) {
-    let pages: string[] | null = null
-
-    try {
-      pages = await extractPdfPagesText(bytes, async (info) => {
+    const extracted = await extractTextWithSarvamOcr({
+      bytes,
+      mimeType: "application/pdf",
+      language: opts.targetLanguage,
+      preference: opts.baseStatus.ocrPreference,
+      onStatus: async (message) => {
         await setTranslatorJobStatus(opts.userId, opts.jobId, {
           ...opts.baseStatus,
           state: "extracting",
           stage: "extracting",
           updatedAt: Date.now(),
-          message: `Reading page ${info.pageNumber}/${info.totalPages}…`,
+          message,
         })
+      },
+    })
+
+    const parts = splitIntoChunks(extracted, maxCharsPerChunk)
+    const meaningful = parts.filter((p) => p.trim())
+    const partCount = meaningful.length
+    pageCount = 1
+    meaningful.forEach((t, i) =>
+      tasks.push({
+        pageNumber: 1,
+        partNumber: i + 1,
+        partCount,
+        text: t,
       })
-    } catch {
-      pages = null
-    }
-
-    const meaningfulPdfText = (pages ?? [])
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim()
-
-    if (pages && pages.length && meaningfulPdfText.length >= 20) {
-      pageCount = pages.length
-      for (let pageNumber = 1; pageNumber <= pages.length; pageNumber += 1) {
-        const pageText = pages[pageNumber - 1] ?? ""
-        const parts = splitIntoChunks(pageText, maxCharsPerChunk)
-        const meaningful = parts.filter((p) => p.trim())
-        const partCount = Math.max(1, meaningful.length)
-
-        if (!meaningful.length) {
-          continue
-        }
-
-        for (
-          let partNumber = 1;
-          partNumber <= meaningful.length;
-          partNumber += 1
-        ) {
-          tasks.push({
-            pageNumber,
-            partNumber,
-            partCount,
-            text: meaningful[partNumber - 1] ?? "",
-          })
-        }
-      }
-    } else {
-      const extracted = await extractTextWithSarvamOcr({
-        bytes,
-        mimeType: "application/pdf",
-        language: opts.targetLanguage,
-        preference: opts.baseStatus.ocrPreference,
-        onStatus: async (message) => {
-          await setTranslatorJobStatus(opts.userId, opts.jobId, {
-            ...opts.baseStatus,
-            state: "extracting",
-            stage: "extracting",
-            updatedAt: Date.now(),
-            message,
-          })
-        },
-      })
-
-      const parts = splitIntoChunks(extracted, maxCharsPerChunk)
-      const meaningful = parts.filter((p) => p.trim())
-      const partCount = meaningful.length
-      pageCount = 1
-      meaningful.forEach((t, i) =>
-        tasks.push({
-          pageNumber: 1,
-          partNumber: i + 1,
-          partCount,
-          text: t,
-        })
-      )
-    }
+    )
   } else if (mime.startsWith("text/")) {
     const extractedText = new TextDecoder().decode(bytes)
     const parts = splitIntoChunks(extractedText, maxCharsPerChunk)
