@@ -1164,7 +1164,7 @@ export function DocumentAnalyzer() {
   return (
     <div className="space-y-5 sm:space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div className="space-y-1">
+        <div className="min-w-0 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-md border bg-muted/40 px-2 py-1 text-[11px] font-semibold tracking-wide text-muted-foreground">
               DO NOT SIGN BLINDLY
@@ -1176,13 +1176,48 @@ export function DocumentAnalyzer() {
           <h1 className="text-xl font-semibold tracking-tight">
             Document analyzer
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Upload a paper, get a translation, listen to it, then review
-            detected clauses and legal references.
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            Upload a photo or PDF, hear it in your language, and spot risky
+            clauses before you sign.
           </p>
+
+          <div className="grid gap-2 xs:grid-cols-3">
+            <div className="rounded-xl border bg-muted/20 p-3">
+              <div className="flex items-center gap-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                <FileText className="size-3.5" />
+                Step 1
+              </div>
+              <div className="mt-1 text-sm font-medium">Add the paper</div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Take a photo or upload a PDF.
+              </p>
+            </div>
+
+            <div className="rounded-xl border bg-muted/20 p-3">
+              <div className="flex items-center gap-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                <ScanLine className="size-3.5" />
+                Step 2
+              </div>
+              <div className="mt-1 text-sm font-medium">Choose language</div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Pick the language you speak at home.
+              </p>
+            </div>
+
+            <div className="rounded-xl border bg-muted/20 p-3">
+              <div className="flex items-center gap-2 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                <ShieldAlert className="size-3.5" />
+                Step 3
+              </div>
+              <div className="mt-1 text-sm font-medium">Check and listen</div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                Review the warnings, then play the audio.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+        <div className="grid w-full min-w-0 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
           <Button
             variant="outline"
             onClick={resetAll}
@@ -1323,7 +1358,7 @@ export function DocumentAnalyzer() {
                     </span>
                   ))}
 
-                  <span className="ml-auto inline-flex items-center gap-3 text-[11px]">
+                  <span className="flex w-full items-center justify-between gap-3 text-[11px] sm:ml-auto sm:w-auto sm:justify-end">
                     <span>
                       {translatorStatus.translatedChunks}/
                       {Math.max(1, translatorStatus.totalChunks)} translated
@@ -1351,9 +1386,9 @@ export function DocumentAnalyzer() {
       ) : null}
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-12">
-        <div className="space-y-4 sm:space-y-6 lg:col-span-4">
-          <section className="rounded-xl border bg-background p-3 sm:p-4">
-            <div className="mb-3 flex items-center justify-between">
+        <div className="min-w-0 space-y-4 sm:space-y-6 lg:col-span-4">
+          <section className="rounded-2xl border bg-background p-3 sm:p-4">
+            <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm font-semibold">Upload</div>
               <div className="text-xs text-muted-foreground">PDF or photo</div>
             </div>
@@ -1368,11 +1403,24 @@ export function DocumentAnalyzer() {
               }}
               onDrop={(accepted) => handleDrop(accepted)}
               className={cn(
-                "rounded-lg border-dashed bg-muted/20",
+                "rounded-xl border-dashed bg-muted/20 p-4! sm:p-6!",
                 documents.length && "bg-emerald-50/40 dark:bg-emerald-950/10"
               )}
             >
-              <DropzoneEmptyState />
+              <DropzoneEmptyState>
+                <div className="flex flex-col items-center justify-center gap-2 text-center">
+                  <div className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+                    <FileText className="size-5" />
+                  </div>
+                  <div className="text-sm font-semibold">
+                    Tap to add a paper
+                  </div>
+                  <div className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+                    Upload a photo or PDF. We will translate it and mark risky
+                    parts in simple language.
+                  </div>
+                </div>
+              </DropzoneEmptyState>
               <DropzoneContent className="px-2" />
             </Dropzone>
 
@@ -1453,7 +1501,7 @@ export function DocumentAnalyzer() {
                   </div>
                 </ScrollArea>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 xs:grid-cols-2">
                   <Button
                     size="sm"
                     variant="outline"
@@ -1490,7 +1538,7 @@ export function DocumentAnalyzer() {
             ) : null}
           </section>
 
-          <section className="rounded-xl border bg-background p-3 sm:p-4">
+          <section className="rounded-2xl border bg-background p-3 sm:p-4">
             <div className="mb-3 text-sm font-semibold">Language</div>
             <Select value={language} onValueChange={setLanguage}>
               <SelectTrigger>
@@ -1504,12 +1552,13 @@ export function DocumentAnalyzer() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Tip: set this to your spoken language so audio playback is useful.
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Pick the language you speak at home so the audio is easy to
+              follow.
             </p>
           </section>
 
-          <section className="rounded-xl border bg-background p-3 sm:p-4">
+          <section className="rounded-2xl border bg-background p-3 sm:p-4">
             <div className="mb-3 text-sm font-semibold">Read aloud length</div>
             <Select
               value={String(ttsSegmentSeconds)}
@@ -1524,28 +1573,25 @@ export function DocumentAnalyzer() {
                 <SelectItem value="90">90 seconds</SelectItem>
               </SelectContent>
             </Select>
-            <p className="mt-2 text-xs text-muted-foreground">
-              This controls the audio chunk size. You can keep listening with
-              next/prev chunks.
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Short audio works better on weak networks and is easier to replay.
             </p>
           </section>
 
-          <section className="rounded-xl border bg-background p-3 sm:p-4">
-            <div className="mb-3 text-sm font-semibold">OCR provider</div>
-            <Select value={ocrPreference}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select OCR provider" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="sarvam">Sarvam (default)</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="mt-2 text-xs text-muted-foreground">
-              OCR runs on Sarvam Document Intelligence.
+          <section className="rounded-2xl border bg-background p-3 sm:p-4">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="text-sm font-semibold">OCR provider</div>
+              <span className="rounded-full border bg-muted/30 px-2 py-1 text-[11px] font-semibold text-foreground">
+                Sarvam
+              </span>
+            </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              OCR runs on Sarvam Document Intelligence for clearer photo
+              reading.
             </p>
           </section>
 
-          <section className="rounded-xl border bg-background p-3 sm:p-4">
+          <section className="rounded-2xl border bg-background p-3 sm:p-4">
             <div className="mb-3 text-sm font-semibold">State (optional)</div>
             <Select
               value={stateCode || NO_STATE_VALUE}
@@ -1578,13 +1624,13 @@ export function DocumentAnalyzer() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
               This changes what we highlight (land record terms, state-dependent
               checks like stamp duty).
             </p>
           </section>
 
-          <section className="rounded-xl border bg-background p-3 sm:p-4">
+          <section className="rounded-2xl border bg-background p-3 sm:p-4">
             <div className="mb-2 flex items-center justify-between">
               <div className="text-sm font-semibold">Full-document check</div>
               <div className="text-xs text-muted-foreground">AI</div>
@@ -1625,8 +1671,8 @@ export function DocumentAnalyzer() {
           </section>
         </div>
 
-        <div className="lg:col-span-8">
-          <section className="overflow-hidden rounded-xl border bg-background">
+        <div className="min-w-0 lg:col-span-8">
+          <section className="overflow-hidden rounded-2xl border bg-background">
             <Tabs
               value={activeTab}
               onValueChange={(v) => setActiveTab(v as typeof activeTab)}
@@ -1838,11 +1884,11 @@ export function DocumentAnalyzer() {
                             ? "Selected line — quick actions"
                             : "Select a line to unlock quick actions"}
                         </div>
-                        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                        <div className="grid grid-cols-1 gap-2 xs:grid-cols-2 sm:flex sm:flex-wrap">
                           <Button
                             size="sm"
                             variant="outline"
-                            className="w-full gap-2 sm:w-auto"
+                            className="w-full gap-2 xs:col-span-2"
                             onClick={() =>
                               navigator.clipboard
                                 .writeText(translatedText)
@@ -1894,10 +1940,10 @@ export function DocumentAnalyzer() {
                         </div>
                       ) : null}
 
-                      <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                      <div className="mt-3 grid grid-cols-1 gap-2 xs:grid-cols-2 sm:flex sm:flex-wrap">
                         <Button
                           size="sm"
-                          className="col-span-2 gap-2 sm:col-span-1"
+                          className="w-full gap-2 xs:col-span-2"
                           variant="default"
                           onClick={() => askPreset("explain")}
                           disabled={!selectionText}
@@ -1987,7 +2033,7 @@ export function DocumentAnalyzer() {
                           Consolidated summary + red-flag review.
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                      <div className="grid grid-cols-1 gap-2 xs:grid-cols-2 sm:flex sm:flex-wrap">
                         <Button
                           size="sm"
                           variant="outline"
