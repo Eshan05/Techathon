@@ -1,5 +1,5 @@
 import { cookies } from "next/headers"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Geist, Geist_Mono, Noto_Serif_Devanagari } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/contexts/theme-provider"
@@ -12,6 +12,11 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
 const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+})
+
+const notoSerifDev = Noto_Serif_Devanagari({
+  subsets: ["devanagari"],
+  variable: "--font-devanagari",
 })
 
 export default async function RootLayout({
@@ -29,7 +34,8 @@ export default async function RootLayout({
         "antialiased",
         fontMono.variable,
         "font-sans",
-        geist.variable
+        geist.variable,
+        notoSerifDev.variable
       )}
     >
       <body>
