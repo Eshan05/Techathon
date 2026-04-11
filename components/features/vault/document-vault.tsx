@@ -212,7 +212,7 @@ async function deleteDocument(id: string): Promise<void> {
 async function scheduleDocumentProcessing(
   id: string
 ): Promise<DocumentJobStatus> {
-  const r = await fetch(`/api/documents/${id}/process`, {
+  const r = await fetch(`/api/documents/${id}/processing-jobs`, {
     method: "POST",
     credentials: "same-origin",
   })
@@ -225,7 +225,7 @@ async function scheduleDocumentProcessing(
 }
 
 async function scheduleDocumentOcr(id: string): Promise<DocumentOcrJobStatus> {
-  const r = await fetch(`/api/documents/${id}/ocr`, {
+  const r = await fetch(`/api/documents/${id}/ocr-jobs`, {
     method: "POST",
     credentials: "same-origin",
   })
@@ -304,7 +304,7 @@ export function DocumentVault() {
       documentId?: string
       language: string
     }) => {
-      const r = await fetch("/api/documents/ask", {
+      const r = await fetch("/api/document-answers", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },

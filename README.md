@@ -50,7 +50,7 @@ pnpm dev
 
 - `/sign-up`, `/sign-in`, `/forgot-password`, `/reset-password`, `/two-factor`
 - `/dashboard` (requires session)
-- Better Auth handler: `/api/sessions/[...all]` (alias: `/api/auth/[...all]`)
+- Better Auth handler: `/api/sessions/[...all]`
 
 ## Notes on Better Auth 1.6
 

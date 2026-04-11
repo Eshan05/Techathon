@@ -310,7 +310,7 @@ async function publishNextChunk(opts: {
   if (!qstash) throw new Error("QStash not configured")
 
   await qstash.publishJSON({
-    url: `${siteConfig.url}/api/qstash/translator-jobs/process`,
+    url: `${siteConfig.url}/api/queues/translator-runs`,
     body: {
       userId: opts.userId,
       jobId: opts.jobId,

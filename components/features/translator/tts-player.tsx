@@ -233,7 +233,7 @@ export function TTSPlayer({ text, language, segmentSeconds }: TTSPlayerProps) {
       setIsLoading(true)
       setError(null)
 
-      const response = await fetch("/api/tts", {
+      const response = await fetch("/api/speeches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

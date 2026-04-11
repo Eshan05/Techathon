@@ -667,7 +667,7 @@ export async function POST(req: Request) {
 
   try {
     const res = await qstash.publishJSON({
-      url: `${siteConfig.url}/api/qstash/translator-jobs/process`,
+      url: `${siteConfig.url}/api/queues/translator-runs`,
       body: { userId, jobId, step: "init" },
     })
 

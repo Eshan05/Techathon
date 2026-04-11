@@ -60,7 +60,7 @@ export default function SessionsItem({ session }: { session: SessionProp }) {
             ;(async () => {
               try {
                 const r = await fetch(
-                  "/api/auth/multi-session/list-device-sessions",
+                  "/api/sessions/multi-session/list-device-sessions",
                   {
                     credentials: "same-origin",
                   }
@@ -221,7 +221,7 @@ export default function SessionsItem({ session }: { session: SessionProp }) {
                                           setIsTerminating(s.id)
                                           try {
                                             const r = await fetch(
-                                              "/api/auth/multi-session/revoke",
+                                              "/api/sessions/multi-session/revoke",
                                               {
                                                 method: "POST",
                                                 credentials: "same-origin",

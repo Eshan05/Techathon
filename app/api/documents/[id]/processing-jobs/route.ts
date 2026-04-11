@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth/auth"
 import { db } from "@/lib/db/db"
 import { documents } from "@/lib/db/schema"
 import { getQstashClient } from "@/lib/qstash/client"
-import { setDocumentOcrJobStatus } from "@/lib/qstash/document-ocr-jobs"
+import { setDocumentJobStatus } from "@/lib/qstash/document-jobs"
 import { siteConfig } from "@/lib/site"
 
 export const runtime = "nodejs"
@@ -29,13 +29,6 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
-  if (!row.url || !row.mimeType) {
-    return NextResponse.json(
-      { error: "Document is missing a URL or mime type" },
-      { status: 400 }
-    )
-  }
-
   const qstash = getQstashClient()
   if (!qstash) {
     return NextResponse.json(
@@ -45,11 +38,11 @@ export async function POST(
   }
 
   const baseJob = { state: "queued" as const, updatedAt: Date.now() }
-  await setDocumentOcrJobStatus(session.user.id, id, baseJob)
+  await setDocumentJobStatus(session.user.id, id, baseJob)
 
   try {
     const res = await qstash.publishJSON({
-      url: `${siteConfig.url}/api/qstash/documents/ocr`,
+      url: `${siteConfig.url}/api/queues/document-jobs`,
       body: { userId: session.user.id, documentId: id },
     })
 
@@ -59,7 +52,7 @@ export async function POST(
       messageId: res.messageId,
     }
 
-    await setDocumentOcrJobStatus(session.user.id, id, job)
+    await setDocumentJobStatus(session.user.id, id, job)
 
     return NextResponse.json({ data: { job } })
   } catch (e) {
@@ -71,7 +64,7 @@ export async function POST(
       message: e instanceof Error ? e.message : "Failed to queue",
     }
 
-    await setDocumentOcrJobStatus(session.user.id, id, job)
+    await setDocumentJobStatus(session.user.id, id, job)
 
     return NextResponse.json(
       { error: "Failed to queue", data: { job } },

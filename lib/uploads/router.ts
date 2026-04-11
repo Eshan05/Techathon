@@ -98,7 +98,7 @@ export const uploadRouter = {
           await setDocumentJobStatus(metadata.userId, id, job)
 
           const res = await qstash.publishJSON({
-            url: `${siteConfig.url}/api/qstash/documents/process`,
+            url: `${siteConfig.url}/api/queues/document-jobs`,
             body: { userId: metadata.userId, documentId: id },
           })
 
