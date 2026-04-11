@@ -49,7 +49,7 @@ async function expandNaturalLanguageQuery(input: {
   }
 
   const profile = resolveChatProfile({ profileId: "default" })
-  const model = getChatModel(profile)
+  const model = await getChatModel(profile)
 
   const system = [
     "You are a search helper for an Indian farmer legal app.",

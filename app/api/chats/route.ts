@@ -86,7 +86,7 @@ export async function POST(req: Request) {
   const { messages, profileId, system, modelId, locale, stream, cache } =
     parsed.data
   const profile = resolveChatProfile({ profileId, system, modelId })
-  const model = getChatModel(profile)
+  const model = await getChatModel(profile)
   const chatSystem = [profile.system, getLocaleInstructions(locale)].join(
     "\n\n"
   )
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model,
-    system: profile.system,
+    system: chatSystem,
     messages: modelMessages,
     temperature: profile.temperature,
     maxOutputTokens: profile.maxOutputTokens,

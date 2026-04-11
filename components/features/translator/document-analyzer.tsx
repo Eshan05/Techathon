@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Progress } from "@/components/ui/progress"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +52,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import { TTSPlayer } from "@/components/features/translator/tts-player"
+import { SafeHtml } from "@/components/derived/safe-html"
 import { uploadFiles } from "@/utils/uploadthing"
 import {
   getHighlightRangesForText,
@@ -265,6 +267,66 @@ function mergeInsights(
   return Array.from(map.values()).sort((a, b) => a.index - b.index)
 }
 
+function getStepState(opts: { status: TranslatorJobStatus | null }): {
+  steps: Array<{
+    key: string
+    label: string
+    state: "todo" | "active" | "done"
+  }>
+  progressPct: number
+} {
+  const s = opts.status
+  const state = s?.state
+  const stage = s?.stage
+  const total = s?.totalChunks ? Math.max(1, s.totalChunks) : 1
+
+  const stepKeys = [
+    { key: "queued", label: "Queued" },
+    { key: "extracting", label: "Reading" },
+    { key: "translating", label: "Translating" },
+    { key: "analyzing", label: "Checking" },
+    { key: "done", label: "Done" },
+  ]
+
+  function activeKey() {
+    if (!s) return "queued"
+    if (state === "queued") return "queued"
+    if (state === "failed") return stage || "extracting"
+    if (state === "done" || stage === "done") return "done"
+    if (stage === "extracting") return "extracting"
+    if (stage === "analyzing") return "analyzing"
+    if (stage === "translating") return "translating"
+    return "queued"
+  }
+
+  const active = activeKey()
+  const order = stepKeys.map((x) => x.key)
+  const activeIndex = Math.max(0, order.indexOf(active))
+
+  const steps = stepKeys.map((x, idx) => ({
+    ...x,
+    state:
+      idx < activeIndex
+        ? ("done" as const)
+        : idx === activeIndex
+          ? ("active" as const)
+          : ("todo" as const),
+  }))
+
+  let pct = 0
+  if (!s) pct = 0
+  else if (state === "done" || stage === "done") pct = 100
+  else if (stage === "translating")
+    pct = Math.round((100 * (s.translatedChunks || 0)) / total)
+  else if (stage === "analyzing")
+    pct = Math.round((100 * (s.analyzedChunks || 0)) / total)
+  else if (stage === "extracting") pct = 5
+  else if (state === "queued") pct = 1
+
+  pct = Math.max(0, Math.min(100, pct))
+  return { steps, progressPct: pct }
+}
+
 function buildCombinedTranslation(chunks: TranslatorChunk[]) {
   return chunks
     .slice()
@@ -321,6 +383,10 @@ function buildCombinedInsights(opts: {
     .trim()
 }
 
+function containsHtmlTable(input: string) {
+  return /<(table|thead|tbody|tfoot|tr|th|td)[\s>]/i.test(input)
+}
+
 export function DocumentAnalyzer() {
   const [documents, setDocuments] = React.useState<AnalyzerDocument[]>([])
   const [activeDocumentId, setActiveDocumentId] = React.useState<string | null>(
@@ -328,7 +394,9 @@ export function DocumentAnalyzer() {
   )
 
   const [language, setLanguage] = React.useState<string>("hi-IN")
+  const [ttsSegmentSeconds, setTtsSegmentSeconds] = React.useState<number>(30)
   const [stateCode, setStateCode] = React.useState<string>("")
+  const ocrPreference = "sarvam" as const
 
   const [isTranslating, setIsTranslating] = React.useState(false)
 
@@ -422,11 +490,19 @@ export function DocumentAnalyzer() {
       const state = (q.state.data as any)?.data?.status?.state as
         | TranslatorJobState
         | undefined
+      const stage = (q.state.data as any)?.data?.status?.stage as
+        | TranslatorJobStatus["stage"]
+        | undefined
 
       if (!state) return 1200
-      return state === "done" || state === "failed" ? false : 1200
+
+      if (state === "done" || state === "failed") return false
+      if (stage === "extracting") return 900
+      return 650
     },
-    retry: false,
+    refetchIntervalInBackground: true,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(4000, 500 * 2 ** attempt),
   })
 
   React.useEffect(() => {
@@ -482,26 +558,56 @@ export function DocumentAnalyzer() {
     [stateCode]
   )
 
-  const paragraphs = React.useMemo(() => {
-    if (!translatedText) return [] as string[]
-    return translatedText
-      .split(/\n+/)
-      .map((p) => p.trim())
-      .filter(Boolean)
-  }, [translatedText])
-
   const summary = React.useMemo(() => {
     if (!translatedText) return null
     return summarizeDocument(translatedText, { stateCode })
   }, [translatedText, stateCode])
 
-  const highlightedParagraphs = React.useMemo(() => {
-    if (!summary) return [] as Array<{ text: string; ranges: HighlightRange[] }>
-    return paragraphs.map((p) => ({
-      text: p,
-      ranges: getHighlightRangesForText(p, summary),
-    }))
-  }, [paragraphs, summary])
+  const translatedPages = React.useMemo(() => {
+    if (!translatorChunks.length) {
+      return [] as Array<{
+        pageNumber: number
+        expectedParts: number
+        completedParts: number
+        isComplete: boolean
+        parts: TranslatorChunk[]
+      }>
+    }
+
+    const byPage = new Map<number, TranslatorChunk[]>()
+    translatorChunks.forEach((c) => {
+      const pageNumber = Number.isFinite(c.pageNumber) ? c.pageNumber : 1
+      const list = byPage.get(pageNumber) ?? []
+      list.push(c)
+      byPage.set(pageNumber, list)
+    })
+
+    const pageNumbers = Array.from(byPage.keys()).sort((a, b) => a - b)
+
+    return pageNumbers.map((pageNumber) => {
+      const parts = (byPage.get(pageNumber) ?? []).slice()
+      parts.sort(
+        (a, b) =>
+          (a.partNumber ?? 0) - (b.partNumber ?? 0) ||
+          (a.index ?? 0) - (b.index ?? 0)
+      )
+
+      const expectedParts = Math.max(
+        1,
+        ...parts.map((p) => (Number.isFinite(p.partCount) ? p.partCount : 1))
+      )
+      const completedParts = parts.length
+      const isComplete = completedParts >= expectedParts
+
+      return {
+        pageNumber,
+        expectedParts,
+        completedParts,
+        isComplete,
+        parts,
+      }
+    })
+  }, [translatorChunks])
 
   const chunkMetaByIndex = React.useMemo(() => {
     return new Map(translatorChunks.map((c) => [c.index, c] as const))
@@ -693,6 +799,7 @@ export function DocumentAnalyzer() {
           mimeType,
           targetLanguage: language,
           stateCode: stateCode || undefined,
+          ocrPreference,
         }),
       })
 
@@ -1182,30 +1289,66 @@ export function DocumentAnalyzer() {
             )}
           </Button>
         </div>
-
-        {translatorStatus && (
-          <div className="w-full rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="font-semibold text-foreground/80">
-                {translatorStatus.stage}
-              </span>
-              <span>
-                {translatorStatus.translatedChunks}/
-                {Math.max(1, translatorStatus.totalChunks)} translated
-              </span>
-              <span>
-                {translatorStatus.analyzedChunks}/
-                {Math.max(1, translatorStatus.totalChunks)} checked
-              </span>
-            </div>
-            {translatorStatus.message ? (
-              <div className="mt-1 line-clamp-2">
-                {translatorStatus.message}
-              </div>
-            ) : null}
-          </div>
-        )}
       </div>
+
+      {translatorStatus ? (
+        <div className="rounded-xl border bg-muted/10 p-3 text-xs text-muted-foreground">
+          {(() => {
+            const { steps, progressPct } = getStepState({
+              status: translatorStatus,
+            })
+            const isActiveNow =
+              translatorStatus.state !== "done" &&
+              translatorStatus.state !== "failed"
+
+            return (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  {steps.map((st) => (
+                    <span
+                      key={st.key}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold",
+                        st.state === "done" &&
+                          "bg-background text-muted-foreground",
+                        st.state === "todo" &&
+                          "bg-muted/20 text-muted-foreground",
+                        st.state === "active" && "bg-background text-foreground"
+                      )}
+                    >
+                      {st.state === "active" && isActiveNow ? (
+                        <Loader2 className="size-3 animate-spin" />
+                      ) : null}
+                      {st.label}
+                    </span>
+                  ))}
+
+                  <span className="ml-auto inline-flex items-center gap-3 text-[11px]">
+                    <span>
+                      {translatorStatus.translatedChunks}/
+                      {Math.max(1, translatorStatus.totalChunks)} translated
+                    </span>
+                    <span>
+                      {translatorStatus.analyzedChunks}/
+                      {Math.max(1, translatorStatus.totalChunks)} checked
+                    </span>
+                  </span>
+                </div>
+
+                <div className="mt-2">
+                  <Progress value={progressPct} />
+                </div>
+
+                {translatorStatus.message ? (
+                  <div className="mt-2 break-words">
+                    {translatorStatus.message}
+                  </div>
+                ) : null}
+              </>
+            )
+          })()}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-12">
         <div className="space-y-4 sm:space-y-6 lg:col-span-4">
@@ -1363,6 +1506,42 @@ export function DocumentAnalyzer() {
             </Select>
             <p className="mt-2 text-xs text-muted-foreground">
               Tip: set this to your spoken language so audio playback is useful.
+            </p>
+          </section>
+
+          <section className="rounded-xl border bg-background p-3 sm:p-4">
+            <div className="mb-3 text-sm font-semibold">Read aloud length</div>
+            <Select
+              value={String(ttsSegmentSeconds)}
+              onValueChange={(v) => setTtsSegmentSeconds(Number(v))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select read length" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="30">30 seconds (recommended)</SelectItem>
+                <SelectItem value="60">60 seconds</SelectItem>
+                <SelectItem value="90">90 seconds</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="mt-2 text-xs text-muted-foreground">
+              This controls the audio chunk size. You can keep listening with
+              next/prev chunks.
+            </p>
+          </section>
+
+          <section className="rounded-xl border bg-background p-3 sm:p-4">
+            <div className="mb-3 text-sm font-semibold">OCR provider</div>
+            <Select value={ocrPreference}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select OCR provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sarvam">Sarvam (default)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="mt-2 text-xs text-muted-foreground">
+              OCR runs on Sarvam Document Intelligence.
             </p>
           </section>
 
@@ -1593,14 +1772,53 @@ export function DocumentAnalyzer() {
                       )}
                     >
                       <div className="prose prose-slate prose-p:mb-4 prose-p:text-sm prose-p:leading-relaxed last:prose-p:mb-0 dark:prose-invert max-w-none select-text">
-                        {highlightedParagraphs.map((p, index) => (
-                          <p
-                            key={index}
-                            id={`p-${index}`}
-                            className="break-words"
-                          >
-                            {renderWithHighlights(p.text, p.ranges)}
-                          </p>
+                        {translatedPages.map((page) => (
+                          <div key={page.pageNumber} className="mb-6 last:mb-0">
+                            {translatedPages.length > 1 ? (
+                              <div className="mb-2 flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                                <span>Page {page.pageNumber}</span>
+                                <span>
+                                  {page.isComplete
+                                    ? "done"
+                                    : `${page.completedParts}/${page.expectedParts}`}
+                                </span>
+                              </div>
+                            ) : null}
+
+                            {page.parts.map((part) => {
+                              const raw = part.text || ""
+
+                              if (containsHtmlTable(raw)) {
+                                return (
+                                  <SafeHtml
+                                    key={`part-${part.index}`}
+                                    html={raw}
+                                    className="text-sm leading-relaxed text-foreground/90"
+                                  />
+                                )
+                              }
+
+                              const paras = raw
+                                .split(/\n+/)
+                                .map((p) => p.trim())
+                                .filter(Boolean)
+
+                              return paras.map((text, idx) => (
+                                <p
+                                  key={`${part.index}-${idx}`}
+                                  id={`p-${part.index}-${idx}`}
+                                  className="break-words"
+                                >
+                                  {renderWithHighlights(
+                                    text,
+                                    summary
+                                      ? getHighlightRangesForText(text, summary)
+                                      : []
+                                  )}
+                                </p>
+                              ))
+                            })}
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -2057,7 +2275,11 @@ export function DocumentAnalyzer() {
 
               <TabsContent value="audio" className="m-0 p-3 sm:p-4">
                 {translatedText ? (
-                  <TTSPlayer text={translatedText} language={language} />
+                  <TTSPlayer
+                    text={translatedText}
+                    language={language}
+                    segmentSeconds={ttsSegmentSeconds}
+                  />
                 ) : (
                   <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
                     Translate the document first.

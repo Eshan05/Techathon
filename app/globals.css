@@ -138,3 +138,25 @@
   align-items: center;
   gap: 0.5rem;
 }
+
+@layer components {
+  .kv-html table {
+    @apply my-3 min-w-full w-max border-collapse text-sm;
+  }
+
+  .kv-html th {
+    @apply border border-border/60 bg-muted/40 px-2 py-1 text-left font-semibold;
+  }
+
+  .kv-html td {
+    @apply border border-border/60 px-2 py-1 align-top;
+  }
+
+  .kv-html caption {
+    @apply mb-2 text-left text-xs font-semibold text-muted-foreground;
+  }
+
+  .kv-html tbody tr:nth-child(even) td {
+    @apply bg-muted/20;
+  }
+}

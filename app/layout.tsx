@@ -2,7 +2,7 @@ import { cookies } from "next/headers"
 import { Geist, Geist_Mono } from "next/font/google"
 
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeProvider } from "@/contexts/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { defaultLocale } from "@/i18n/routing"
 import { cn } from "@/lib/utils"

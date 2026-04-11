@@ -41,12 +41,12 @@ export function LocaleSwitcher({ className }: { className?: string }) {
           })
         }
       >
-        <SelectTrigger className="h-9 w-40">
+        <SelectTrigger className="h-7! w-40 bg-secondary-foreground text-xs">
           <SelectValue placeholder={t("label")} />
         </SelectTrigger>
         <SelectContent align="end">
           {locales.map((l) => (
-            <SelectItem key={l} value={l}>
+            <SelectItem className="text-xs" key={l} value={l}>
               {localeLabels[l]}
             </SelectItem>
           ))}
