@@ -5,16 +5,17 @@ import { eq } from "drizzle-orm"
 import { auth } from "@/lib/auth/auth"
 import { ensureFarmerProfilesSchema } from "@/lib/db/compat"
 import { siteConfig } from "@/lib/site"
-import { getQstashClient } from "@/lib/qstash/client"
 import { db } from "@/lib/db/db"
 import { farmerProfiles } from "@/lib/db/schema"
 import {
   setTranslatorJobInsightChunk,
   setTranslatorJobOutputChunk,
   setTranslatorJobStatus,
+  getTranslatorJobsStoreDiagnostics,
   type TranslatorInsight,
   type TranslatorJobStatus,
   type TranslatorOcrPreference,
+  TranslatorJobsStoreMisconfiguredError,
 } from "@/lib/qstash/translator-jobs"
 
 import { SarvamAIClient } from "sarvamai"
@@ -27,11 +28,6 @@ import {
 
 import { getChatModel, resolveChatProfile } from "@/lib/ai"
 import { generateText } from "ai"
-
-// pdfjs-dist doesn't ship perfect ESM typings for this path in all setups.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
 
 export const runtime = "nodejs"
 
@@ -99,32 +95,6 @@ function splitIntoChunks(text: string, maxChars: number): string[] {
 
   flush()
   return chunks
-}
-
-async function extractPdfPagesText(
-  bytes: Uint8Array,
-  onPage?: (info: {
-    pageNumber: number
-    totalPages: number
-  }) => void | Promise<void>
-): Promise<string[]> {
-  const task = getDocument({ data: bytes, disableWorker: true } as any)
-  const pdf = await task.promise
-
-  const pages: string[] = []
-  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
-    await onPage?.({ pageNumber: pageNum, totalPages: pdf.numPages })
-    const page = await pdf.getPage(pageNum)
-    const content = await page.getTextContent()
-    const strings = (content.items as any[])
-      .map((it) => (typeof it?.str === "string" ? it.str : ""))
-      .map((s) => s.replace(/\s+/g, " ").trim())
-      .filter(Boolean)
-
-    pages.push(strings.join(" "))
-  }
-
-  return pages
 }
 
 async function translateChunk(opts: {
@@ -335,7 +305,7 @@ async function processTranslatorJobLocally(opts: {
     state: "extracting",
     stage: "extracting",
     updatedAt: Date.now(),
-    message: "Processing locally (dev)…",
+    message: "Processing inline (no queue)…",
   })
 
   const r = await fetch(opts.fileUrl)
@@ -356,82 +326,34 @@ async function processTranslatorJobLocally(opts: {
   let pageCount = 1
 
   if (mime.includes("pdf")) {
-    let pages: string[] | null = null
-
-    try {
-      pages = await extractPdfPagesText(bytes, async (info) => {
+    const extracted = await extractTextWithSarvamOcr({
+      bytes,
+      mimeType: "application/pdf",
+      language: opts.targetLanguage,
+      preference: opts.baseStatus.ocrPreference,
+      onStatus: async (message) => {
         await setTranslatorJobStatus(opts.userId, opts.jobId, {
           ...opts.baseStatus,
           state: "extracting",
           stage: "extracting",
           updatedAt: Date.now(),
-          message: `Reading page ${info.pageNumber}/${info.totalPages}…`,
+          message,
         })
+      },
+    })
+
+    const parts = splitIntoChunks(extracted, maxCharsPerChunk)
+    const meaningful = parts.filter((p) => p.trim())
+    const partCount = meaningful.length
+    pageCount = 1
+    meaningful.forEach((t, i) =>
+      tasks.push({
+        pageNumber: 1,
+        partNumber: i + 1,
+        partCount,
+        text: t,
       })
-    } catch {
-      pages = null
-    }
-
-    const meaningfulPdfText = (pages ?? [])
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim()
-
-    if (pages && pages.length && meaningfulPdfText.length >= 20) {
-      pageCount = pages.length
-      for (let pageNumber = 1; pageNumber <= pages.length; pageNumber += 1) {
-        const pageText = pages[pageNumber - 1] ?? ""
-        const parts = splitIntoChunks(pageText, maxCharsPerChunk)
-        const meaningful = parts.filter((p) => p.trim())
-        const partCount = Math.max(1, meaningful.length)
-
-        if (!meaningful.length) {
-          continue
-        }
-
-        for (
-          let partNumber = 1;
-          partNumber <= meaningful.length;
-          partNumber += 1
-        ) {
-          tasks.push({
-            pageNumber,
-            partNumber,
-            partCount,
-            text: meaningful[partNumber - 1] ?? "",
-          })
-        }
-      }
-    } else {
-      const extracted = await extractTextWithSarvamOcr({
-        bytes,
-        mimeType: "application/pdf",
-        language: opts.targetLanguage,
-        preference: opts.baseStatus.ocrPreference,
-        onStatus: async (message) => {
-          await setTranslatorJobStatus(opts.userId, opts.jobId, {
-            ...opts.baseStatus,
-            state: "extracting",
-            stage: "extracting",
-            updatedAt: Date.now(),
-            message,
-          })
-        },
-      })
-
-      const parts = splitIntoChunks(extracted, maxCharsPerChunk)
-      const meaningful = parts.filter((p) => p.trim())
-      const partCount = meaningful.length
-      pageCount = 1
-      meaningful.forEach((t, i) =>
-        tasks.push({
-          pageNumber: 1,
-          partNumber: i + 1,
-          partCount,
-          text: t,
-        })
-      )
-    }
+    )
   } else if (mime.startsWith("text/")) {
     const extractedText = new TextDecoder().decode(bytes)
     const parts = splitIntoChunks(extractedText, maxCharsPerChunk)
@@ -608,20 +530,31 @@ const requestSchema = z
   .strict()
 
 export async function POST(req: Request) {
+  const diag = getTranslatorJobsStoreDiagnostics()
+  const baseHeaders = {
+    "x-kisan-vakil-api": "translator-jobs",
+    "x-kisan-vakil-store": diag.preferRedis ? "redis" : "local",
+  }
+
   const session = await auth.api.getSession({ headers: req.headers })
   if (!session?.session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401, headers: baseHeaders }
+    )
   }
 
   const json = await req.json().catch(() => null)
   const parsed = requestSchema.safeParse(json)
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 })
+    return NextResponse.json(
+      { error: "Invalid request" },
+      { status: 400, headers: baseHeaders }
+    )
   }
 
   const isDev = process.env.NODE_ENV !== "production"
   const loopbackBase = isLoopbackBaseUrl(siteConfig.url)
-  const qstash = getQstashClient()
 
   const userId = session.user.id
   const jobId = crypto.randomUUID()
@@ -658,12 +591,24 @@ export async function POST(req: Request) {
     analyzedChunks: 0,
   }
 
-  await setTranslatorJobStatus(userId, jobId, status)
+  try {
+    await setTranslatorJobStatus(userId, jobId, status)
+  } catch (e) {
+    if (e instanceof TranslatorJobsStoreMisconfiguredError) {
+      return NextResponse.json(
+        { error: e.message, meta: diag },
+        { status: 500, headers: baseHeaders }
+      )
+    }
+    throw e
+  }
 
   // In local dev, QStash cannot deliver to loopback destinations (localhost/::1).
   // Instead, run the pipeline locally so the analyzer still works without a tunnel.
-  if (isDev && loopbackBase) {
-    void processTranslatorJobLocally({
+  try {
+    // No QStash: run inline.
+    // Note: this can take time for large PDFs/images (OCR + translate).
+    await processTranslatorJobLocally({
       userId,
       jobId,
       fileUrl: parsed.data.fileUrl,
@@ -671,59 +616,22 @@ export async function POST(req: Request) {
       targetLanguage: parsed.data.targetLanguage,
       stateCode: parsed.data.stateCode?.trim() || undefined,
       baseStatus: status,
-    }).catch(async (e) => {
-      console.error(e)
-      await setTranslatorJobStatus(userId, jobId, {
-        ...status,
-        state: "failed",
-        stage: "extracting",
-        updatedAt: Date.now(),
-        message: e instanceof Error ? e.message : "Local processing failed",
-      })
     })
 
-    return NextResponse.json({ data: { jobId } })
-  }
-
-  if (!qstash) {
-    return NextResponse.json(
-      {
-        error:
-          "QStash is not configured (missing QSTASH_TOKEN). In production, set QSTASH_TOKEN. In dev, set NEXT_PUBLIC_BASE_URL to a public tunnel URL or use local mode.",
-      },
-      { status: 500 }
-    )
-  }
-
-  try {
-    const res = await qstash.publishJSON({
-      url: `${siteConfig.url}/api/qstash/translator-jobs/process`,
-      body: { userId, jobId, step: "init" },
-    })
-
-    await setTranslatorJobStatus(userId, jobId, {
-      ...status,
-      state: "extracting",
-      updatedAt: Date.now(),
-      messageId: res.messageId,
-    })
-
-    return NextResponse.json({ data: { jobId } })
+    return NextResponse.json({ data: { jobId } }, { headers: baseHeaders })
   } catch (e) {
     console.error(e)
+
     await setTranslatorJobStatus(userId, jobId, {
       ...status,
       state: "failed",
       updatedAt: Date.now(),
-      message:
-        e instanceof Error
-          ? e.message
-          : "Could not queue processing (QStash publish failed)",
+      message: e instanceof Error ? e.message : "Inline processing failed",
     })
 
     return NextResponse.json(
-      { error: "Could not queue processing" },
-      { status: 502 }
+      { error: e instanceof Error ? e.message : "Inline processing failed" },
+      { status: 500, headers: baseHeaders }
     )
   }
 }

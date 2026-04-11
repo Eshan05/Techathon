@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
+import { MarkdownContent } from "@/components/ui/markdown-content"
 import { cn } from "@/lib/utils"
 
 export function ChatPanel({
@@ -44,22 +45,33 @@ export function ChatPanel({
           ) : null}
 
           <div className="mt-3 flex flex-col gap-3">
-            {messages.map((m) => (
-              <div
-                key={m.id}
-                className={cn(
-                  "max-w-[92%] rounded-2xl border px-3 py-2 text-sm",
-                  m.role === "user"
-                    ? "ml-auto bg-primary text-primary-foreground"
-                    : "bg-background"
-                )}
-              >
-                {m.parts
-                  .map((p) => (p.type === "text" ? p.text : null))
-                  .filter(Boolean)
-                  .join("")}
-              </div>
-            ))}
+            {messages.map((m) => {
+              const text = m.parts
+                .map((p) => (p.type === "text" ? p.text : null))
+                .filter(Boolean)
+                .join("")
+
+              return (
+                <div
+                  key={m.id}
+                  className={cn(
+                    "max-w-[92%] rounded-2xl border px-3 py-2 text-sm",
+                    m.role === "user"
+                      ? "ml-auto bg-primary text-primary-foreground"
+                      : "bg-background"
+                  )}
+                >
+                  <MarkdownContent
+                    content={text}
+                    className={cn(
+                      m.role === "user"
+                        ? "[&_a]:text-primary-foreground/95 [&_code]:bg-primary-foreground/15"
+                        : ""
+                    )}
+                  />
+                </div>
+              )
+            })}
           </div>
 
           {error ? (

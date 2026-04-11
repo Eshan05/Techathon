@@ -14,11 +14,6 @@ import {
   retryWithExponentialBackoff,
 } from "@/lib/ai/retry"
 
-// pdfjs-dist doesn't ship perfect ESM typings for this path in all setups.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
-
 export const runtime = "nodejs"
 
 const payloadSchema = z
@@ -102,25 +97,6 @@ function splitIntoChunks(text: string, maxChars: number): string[] {
 
   flush()
   return chunks
-}
-
-async function extractPdfPagesText(bytes: Uint8Array): Promise<string[]> {
-  const task = getDocument({ data: bytes, disableWorker: true } as any)
-  const pdf = await task.promise
-
-  const pages: string[] = []
-  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
-    const page = await pdf.getPage(pageNum)
-    const content = await page.getTextContent()
-    const strings = (content.items as any[])
-      .map((it) => (typeof it?.str === "string" ? it.str : ""))
-      .map((s) => s.replace(/\s+/g, " ").trim())
-      .filter(Boolean)
-
-    pages.push(strings.join(" "))
-  }
-
-  return pages
 }
 
 function computeAutoTags(opts: { kind: string; text: string }) {
@@ -249,21 +225,12 @@ export async function POST(request: Request) {
     const ocrLanguage = "hi-IN"
 
     if (row.mimeType.includes("pdf")) {
-      try {
-        pages = await extractPdfPagesText(bytes)
-        const meaningfulPdfText = pages.join(" ").replace(/\s+/g, " ").trim()
-
-        if (meaningfulPdfText.length < 20) {
-          throw new Error("PDF appears scanned (no embedded text)")
-        }
-      } catch {
-        const extracted = await extractTextWithSarvamOcr({
-          bytes,
-          mimeType: "application/pdf",
-          language: ocrLanguage,
-        })
-        pages = [extracted]
-      }
+      const extracted = await extractTextWithSarvamOcr({
+        bytes,
+        mimeType: "application/pdf",
+        language: ocrLanguage,
+      })
+      pages = [extracted]
     } else if (row.mimeType.startsWith("image/")) {
       const extracted = await extractTextWithSarvamOcr({
         bytes,
