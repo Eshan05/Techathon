@@ -92,24 +92,6 @@ function isProductionDeployment() {
   return process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL)
 }
 
-export function getTranslatorJobsStoreDiagnostics() {
-  const forced = (process.env.TRANSLATOR_JOBS_STORE ?? "").trim().toLowerCase()
-  const redisEnvConfigured = Boolean(
-    process.env.UPSTASH_REDIS_REST_URL?.trim() &&
-    process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
-  )
-
-  return {
-    isProductionDeployment: isProductionDeployment(),
-    vercel: Boolean(process.env.VERCEL),
-    nodeEnv: process.env.NODE_ENV ?? "",
-    forcedStore: forced || null,
-    preferRedis: shouldPreferRedis(),
-    failIfRedisMissing: shouldFailIfRedisMissing(),
-    redisEnvConfigured,
-  }
-}
-
 function shouldPreferRedis() {
   const forced = (process.env.TRANSLATOR_JOBS_STORE ?? "").trim().toLowerCase()
 
