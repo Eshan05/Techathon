@@ -5,13 +5,13 @@ import { eq } from "drizzle-orm"
 import { auth } from "@/lib/auth/auth"
 import { ensureFarmerProfilesSchema } from "@/lib/db/compat"
 import { siteConfig } from "@/lib/site"
+import { getQstashClient } from "@/lib/qstash/client"
 import { db } from "@/lib/db/db"
 import { farmerProfiles } from "@/lib/db/schema"
 import {
   setTranslatorJobInsightChunk,
   setTranslatorJobOutputChunk,
   setTranslatorJobStatus,
-  getTranslatorJobsStoreDiagnostics,
   type TranslatorInsight,
   type TranslatorJobStatus,
   type TranslatorOcrPreference,
@@ -299,13 +299,17 @@ async function processTranslatorJobLocally(opts: {
   targetLanguage: string
   stateCode?: string
   baseStatus: TranslatorJobStatus
+  mode?: "dev" | "inline"
 }) {
   await setTranslatorJobStatus(opts.userId, opts.jobId, {
     ...opts.baseStatus,
     state: "extracting",
     stage: "extracting",
     updatedAt: Date.now(),
-    message: "Processing inline (no queue)…",
+    message:
+      opts.mode === "inline"
+        ? "Processing inline (QStash disabled)…"
+        : "Processing locally (dev)…",
   })
 
   const r = await fetch(opts.fileUrl)
@@ -530,31 +534,26 @@ const requestSchema = z
   .strict()
 
 export async function POST(req: Request) {
-  const diag = getTranslatorJobsStoreDiagnostics()
-  const baseHeaders = {
-    "x-kisan-vakil-api": "translator-jobs",
-    "x-kisan-vakil-store": diag.preferRedis ? "redis" : "local",
-  }
-
   const session = await auth.api.getSession({ headers: req.headers })
   if (!session?.session) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401, headers: baseHeaders }
-    )
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const json = await req.json().catch(() => null)
   const parsed = requestSchema.safeParse(json)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid request" },
-      { status: 400, headers: baseHeaders }
-    )
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 })
   }
 
   const isDev = process.env.NODE_ENV !== "production"
   const loopbackBase = isLoopbackBaseUrl(siteConfig.url)
+  const qstash = getQstashClient()
+
+  const disableQstashQueueing =
+    (process.env.TRANSLATOR_JOBS_DISABLE_QSTASH ?? "").trim().toLowerCase() ===
+      "1" ||
+    (process.env.TRANSLATOR_JOBS_DISABLE_QSTASH ?? "").trim().toLowerCase() ===
+      "true"
 
   const userId = session.user.id
   const jobId = crypto.randomUUID()
@@ -595,20 +594,48 @@ export async function POST(req: Request) {
     await setTranslatorJobStatus(userId, jobId, status)
   } catch (e) {
     if (e instanceof TranslatorJobsStoreMisconfiguredError) {
-      return NextResponse.json(
-        { error: e.message, meta: diag },
-        { status: 500, headers: baseHeaders }
-      )
+      return NextResponse.json({ error: e.message }, { status: 500 })
     }
     throw e
   }
 
+  // Temporary escape hatch for debugging production deployments:
+  // Run the pipeline inline and skip QStash publish.
+  if (disableQstashQueueing) {
+    console.warn(
+      "[translator-jobs] TRANSLATOR_JOBS_DISABLE_QSTASH enabled — running inline",
+      { userId, jobId }
+    )
+
+    try {
+      await processTranslatorJobLocally({
+        userId,
+        jobId,
+        fileUrl: parsed.data.fileUrl,
+        mimeType: parsed.data.mimeType,
+        targetLanguage: parsed.data.targetLanguage,
+        stateCode: parsed.data.stateCode?.trim() || undefined,
+        baseStatus: status,
+        mode: "inline",
+      })
+    } catch (e) {
+      console.error(e)
+      await setTranslatorJobStatus(userId, jobId, {
+        ...status,
+        state: "failed",
+        stage: "extracting",
+        updatedAt: Date.now(),
+        message: e instanceof Error ? e.message : "Inline processing failed",
+      })
+    }
+
+    return NextResponse.json({ data: { jobId } })
+  }
+
   // In local dev, QStash cannot deliver to loopback destinations (localhost/::1).
   // Instead, run the pipeline locally so the analyzer still works without a tunnel.
-  try {
-    // No QStash: run inline.
-    // Note: this can take time for large PDFs/images (OCR + translate).
-    await processTranslatorJobLocally({
+  if (isDev && loopbackBase) {
+    void processTranslatorJobLocally({
       userId,
       jobId,
       fileUrl: parsed.data.fileUrl,
@@ -616,22 +643,60 @@ export async function POST(req: Request) {
       targetLanguage: parsed.data.targetLanguage,
       stateCode: parsed.data.stateCode?.trim() || undefined,
       baseStatus: status,
+      mode: "dev",
+    }).catch(async (e) => {
+      console.error(e)
+      await setTranslatorJobStatus(userId, jobId, {
+        ...status,
+        state: "failed",
+        stage: "extracting",
+        updatedAt: Date.now(),
+        message: e instanceof Error ? e.message : "Local processing failed",
+      })
     })
 
-    return NextResponse.json({ data: { jobId } }, { headers: baseHeaders })
+    return NextResponse.json({ data: { jobId } })
+  }
+
+  if (!qstash) {
+    return NextResponse.json(
+      {
+        error:
+          "QStash is not configured (missing QSTASH_TOKEN). In production, set QSTASH_TOKEN. In dev, set NEXT_PUBLIC_BASE_URL to a public tunnel URL or use local mode.",
+      },
+      { status: 500 }
+    )
+  }
+
+  try {
+    const res = await qstash.publishJSON({
+      url: `${siteConfig.url}/api/qstash/translator-jobs/process`,
+      body: { userId, jobId, step: "init" },
+    })
+
+    await setTranslatorJobStatus(userId, jobId, {
+      ...status,
+      state: "extracting",
+      updatedAt: Date.now(),
+      messageId: res.messageId,
+    })
+
+    return NextResponse.json({ data: { jobId } })
   } catch (e) {
     console.error(e)
-
     await setTranslatorJobStatus(userId, jobId, {
       ...status,
       state: "failed",
       updatedAt: Date.now(),
-      message: e instanceof Error ? e.message : "Inline processing failed",
+      message:
+        e instanceof Error
+          ? e.message
+          : "Could not queue processing (QStash publish failed)",
     })
 
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Inline processing failed" },
-      { status: 500, headers: baseHeaders }
+      { error: "Could not queue processing" },
+      { status: 502 }
     )
   }
 }
