@@ -4,33 +4,34 @@ import { siteConfig } from "@/lib/site"
 
 export default async function Page() {
   const t = await getTranslations("Landing")
+  const authT = await getTranslations("Auth")
 
   const features = [
     {
       title: t("feature1Title"),
       body: t("feature1Body"),
       details: [
-        "Survey/gat mapping and ownership history snapshots",
-        "Mutation checkpoints with traceable status",
-        "Flag mismatch before you sign",
+        "Instant survey and gat checks with ownership trail",
+        "Mutation milestones with clear status tracking",
+        "Spot mismatches before you sign",
       ],
     },
     {
       title: t("feature2Title"),
       body: t("feature2Body"),
       details: [
-        "Eligibility checks for active schemes and subsidies",
-        "Required document checklist by claim type",
-        "Submission path with office and portal hints",
+        "Fast eligibility check for live schemes and subsidies",
+        "Document checklist by scheme and claim type",
+        "Submission route with office and portal guidance",
       ],
     },
     {
       title: t("feature3Title"),
       body: t("feature3Body"),
       details: [
-        "Notice templates and complaint drafts",
-        "Signed copy vault with case-wise organization",
-        "Quick red-flag checks for risky clauses",
+        "Ready notice templates and complaint drafts",
+        "Signed-copy vault organized case by case",
+        "Quick red-flag scan for risky clauses",
       ],
     },
   ]
@@ -42,6 +43,7 @@ export default async function Page() {
       subheadline={t("subheadline")}
       ctaPrimary={t("ctaPrimary")}
       ctaSecondary={t("ctaSecondary")}
+      signInLabel={authT("signIn")}
       features={features}
     />
   )
