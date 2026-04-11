@@ -9,7 +9,6 @@ import { getQstashClient } from "@/lib/qstash/client"
 import { db } from "@/lib/db/db"
 import { farmerProfiles } from "@/lib/db/schema"
 import {
-  getTranslatorJobStatus,
   setTranslatorJobInsightChunk,
   setTranslatorJobOutputChunk,
   setTranslatorJobStatus,
@@ -18,8 +17,6 @@ import {
   type TranslatorOcrPreference,
   TranslatorJobsStoreMisconfiguredError,
 } from "@/lib/qstash/translator-jobs"
-
-import { getUpstashRedis } from "@/lib/cache/upstash"
 
 import { SarvamAIClient } from "sarvamai"
 
@@ -302,17 +299,13 @@ async function processTranslatorJobLocally(opts: {
   targetLanguage: string
   stateCode?: string
   baseStatus: TranslatorJobStatus
-  mode?: "dev" | "inline"
 }) {
   await setTranslatorJobStatus(opts.userId, opts.jobId, {
     ...opts.baseStatus,
     state: "extracting",
     stage: "extracting",
     updatedAt: Date.now(),
-    message:
-      opts.mode === "inline"
-        ? "Processing inline (QStash disabled)…"
-        : "Processing locally (dev)…",
+    message: "Processing locally (dev)…",
   })
 
   const r = await fetch(opts.fileUrl)
@@ -511,6 +504,12 @@ function isLoopbackBaseUrl(raw: string) {
   }
 }
 
+function shouldTemporarilyDisableTranslatorQstashQueue() {
+  // Temporary debug switch requested by user:
+  // run translator processing inline and bypass QStash publish/queueing.
+  return true
+}
+
 const requestSchema = z
   .object({
     fileUrl: z
@@ -551,16 +550,6 @@ export async function POST(req: Request) {
   const isDev = process.env.NODE_ENV !== "production"
   const loopbackBase = isLoopbackBaseUrl(siteConfig.url)
   const qstash = getQstashClient()
-
-  const debug =
-    (process.env.TRANSLATOR_JOBS_DEBUG ?? "").trim().toLowerCase() === "1" ||
-    (process.env.TRANSLATOR_JOBS_DEBUG ?? "").trim().toLowerCase() === "true"
-
-  const disableQstashQueueing =
-    (process.env.TRANSLATOR_JOBS_DISABLE_QSTASH ?? "").trim().toLowerCase() ===
-      "1" ||
-    (process.env.TRANSLATOR_JOBS_DISABLE_QSTASH ?? "").trim().toLowerCase() ===
-      "true"
 
   const userId = session.user.id
   const jobId = crypto.randomUUID()
@@ -606,33 +595,9 @@ export async function POST(req: Request) {
     throw e
   }
 
-  if (debug) {
-    const hasRedis = Boolean(getUpstashRedis())
-    let roundTripOk = false
-    try {
-      roundTripOk = Boolean(await getTranslatorJobStatus(userId, jobId))
-    } catch {
-      roundTripOk = false
-    }
+  const disableQstashQueue = shouldTemporarilyDisableTranslatorQstashQueue()
 
-    console.warn("[translator-jobs] debug", {
-      nodeEnv: process.env.NODE_ENV,
-      vercel: Boolean(process.env.VERCEL),
-      hasRedis,
-      roundTripOk,
-      userId,
-      jobId,
-    })
-  }
-
-  // Temporary escape hatch for debugging production deployments:
-  // Run the pipeline inline and skip QStash publish.
-  if (disableQstashQueueing) {
-    console.warn(
-      "[translator-jobs] TRANSLATOR_JOBS_DISABLE_QSTASH enabled — running inline",
-      { userId, jobId }
-    )
-
+  if (disableQstashQueue) {
     try {
       await processTranslatorJobLocally({
         userId,
@@ -642,8 +607,9 @@ export async function POST(req: Request) {
         targetLanguage: parsed.data.targetLanguage,
         stateCode: parsed.data.stateCode?.trim() || undefined,
         baseStatus: status,
-        mode: "inline",
       })
+
+      return NextResponse.json({ data: { jobId } })
     } catch (e) {
       console.error(e)
       await setTranslatorJobStatus(userId, jobId, {
@@ -653,10 +619,16 @@ export async function POST(req: Request) {
         updatedAt: Date.now(),
         message: e instanceof Error ? e.message : "Inline processing failed",
       })
-    }
 
-    return NextResponse.json({ data: { jobId } })
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Inline processing failed" },
+        { status: 500 }
+      )
+    }
   }
+
+  // NOTE: Queueing path retained intentionally, but made inaccessible by the
+  // temporary hardcoded switch above for debugging Vercel 404 behavior.
 
   // In local dev, QStash cannot deliver to loopback destinations (localhost/::1).
   // Instead, run the pipeline locally so the analyzer still works without a tunnel.
@@ -669,7 +641,6 @@ export async function POST(req: Request) {
       targetLanguage: parsed.data.targetLanguage,
       stateCode: parsed.data.stateCode?.trim() || undefined,
       baseStatus: status,
-      mode: "dev",
     }).catch(async (e) => {
       console.error(e)
       await setTranslatorJobStatus(userId, jobId, {
