@@ -28,7 +28,11 @@
     "noticeTitle": "Notices and complaints",
     "noticeBody": "Draft complaints, applications, or legal notices.",
     "vaultTitle": "Document vault",
-    "vaultBody": "Store land papers, IDs, and notices safely."
+    "vaultBody": "Store land papers, IDs, and notices safely.",
+    "lawsShort": "Laws",
+    "lookupShort": "Look up",
+    "schemesShort": "Schemes",
+    "disputesShort": "Dispute"
   },
   "Sidebar": {
     "home": "Home",
