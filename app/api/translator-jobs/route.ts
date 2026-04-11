@@ -9,6 +9,7 @@ import { getQstashClient } from "@/lib/qstash/client"
 import { db } from "@/lib/db/db"
 import { farmerProfiles } from "@/lib/db/schema"
 import {
+  getTranslatorJobStatus,
   setTranslatorJobInsightChunk,
   setTranslatorJobOutputChunk,
   setTranslatorJobStatus,
@@ -17,6 +18,8 @@ import {
   type TranslatorOcrPreference,
   TranslatorJobsStoreMisconfiguredError,
 } from "@/lib/qstash/translator-jobs"
+
+import { getUpstashRedis } from "@/lib/cache/upstash"
 
 import { SarvamAIClient } from "sarvamai"
 
@@ -549,6 +552,10 @@ export async function POST(req: Request) {
   const loopbackBase = isLoopbackBaseUrl(siteConfig.url)
   const qstash = getQstashClient()
 
+  const debug =
+    (process.env.TRANSLATOR_JOBS_DEBUG ?? "").trim().toLowerCase() === "1" ||
+    (process.env.TRANSLATOR_JOBS_DEBUG ?? "").trim().toLowerCase() === "true"
+
   const disableQstashQueueing =
     (process.env.TRANSLATOR_JOBS_DISABLE_QSTASH ?? "").trim().toLowerCase() ===
       "1" ||
@@ -597,6 +604,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: e.message }, { status: 500 })
     }
     throw e
+  }
+
+  if (debug) {
+    const hasRedis = Boolean(getUpstashRedis())
+    let roundTripOk = false
+    try {
+      roundTripOk = Boolean(await getTranslatorJobStatus(userId, jobId))
+    } catch {
+      roundTripOk = false
+    }
+
+    console.warn("[translator-jobs] debug", {
+      nodeEnv: process.env.NODE_ENV,
+      vercel: Boolean(process.env.VERCEL),
+      hasRedis,
+      roundTripOk,
+      userId,
+      jobId,
+    })
   }
 
   // Temporary escape hatch for debugging production deployments:
