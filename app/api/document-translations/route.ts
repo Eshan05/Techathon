@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { SarvamAIClient } from "sarvamai"
 
+import { retryWithExponentialBackoff } from "@/lib/ai/retry"
+import {
+  buildSarvamTranslateErrorMessage,
+  isRetryableSarvamTranslateError,
+} from "@/lib/ai/sarvam-errors"
 import { extractTextWithSarvamDocumentIntelligence } from "@/lib/ai/sarvam-document-intelligence"
 
 const client = new SarvamAIClient({
@@ -102,11 +107,29 @@ async function translateTextWithSarvam(opts: {
   const translatedParts: string[] = []
 
   for (const part of parts.length ? parts : [opts.text]) {
-    const r = await client.text.translate({
-      input: part,
-      source_language_code: "auto",
-      target_language_code: opts.targetLanguage,
-      speaker_gender: "Male",
+    const r = await retryWithExponentialBackoff(
+      async () =>
+        await client.text.translate(
+          {
+            input: part,
+            source_language_code: "auto",
+            target_language_code: opts.targetLanguage,
+            speaker_gender: "Male",
+          },
+          {
+            timeoutInSeconds: 60,
+            maxRetries: 2,
+          }
+        ),
+      {
+        maxAttempts: 4,
+        baseDelayMs: 900,
+        maxDelayMs: 9000,
+        jitterRatio: 0.25,
+        shouldRetry: isRetryableSarvamTranslateError,
+      }
+    ).catch((error) => {
+      throw new Error(buildSarvamTranslateErrorMessage(error))
     })
 
     const t = (r.translated_text || "").trim()
@@ -161,11 +184,12 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json({ text: translatedText })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Translation error:", error)
-    return NextResponse.json(
-      { error: error.message || "Something went wrong" },
-      { status: 500 }
-    )
+
+    const message =
+      error instanceof Error ? error.message : "Something went wrong"
+
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

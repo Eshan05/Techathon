@@ -26,6 +26,10 @@ import {
   getHttpStatusFromUnknown,
   retryWithExponentialBackoff,
 } from "@/lib/ai/retry"
+import {
+  buildSarvamTranslateErrorMessage,
+  isRetryableSarvamTranslateError,
+} from "@/lib/ai/sarvam-errors"
 
 import { extractTextWithSarvamDocumentIntelligence } from "@/lib/ai/sarvam-document-intelligence"
 
@@ -140,7 +144,13 @@ async function extractTextWithSarvamOcr(opts: {
       jitterRatio: 0.25,
       shouldRetry: (e) => {
         const status = getHttpStatusFromUnknown(e)
-        return status === 429 || status === 503
+        return (
+          status === 429 ||
+          status === 500 ||
+          status === 502 ||
+          status === 503 ||
+          status === 504
+        )
       },
       onRetry: async (info) => {
         await opts.bumpStatus(
@@ -154,6 +164,10 @@ async function extractTextWithSarvamOcr(opts: {
 async function translateChunk(opts: {
   text: string
   targetLanguage: string
+  onRetry?: (info: {
+    nextAttempt: number
+    maxAttempts: number
+  }) => void | Promise<void>
 }): Promise<string> {
   const MAX_CHARS = 950
 
@@ -173,18 +187,36 @@ async function translateChunk(opts: {
   const translatedParts: string[] = []
 
   for (const part of parts.length ? parts : [opts.text]) {
-    const r = await sarvam.text.translate(
+    const r = await retryWithExponentialBackoff(
+      async () =>
+        await sarvam.text.translate(
+          {
+            input: part,
+            source_language_code: "auto",
+            target_language_code: opts.targetLanguage as any,
+            speaker_gender: "Male",
+          },
+          {
+            timeoutInSeconds: 60,
+            maxRetries: 2,
+          }
+        ),
       {
-        input: part,
-        source_language_code: "auto",
-        target_language_code: opts.targetLanguage as any,
-        speaker_gender: "Male",
-      },
-      {
-        timeoutInSeconds: 60,
-        maxRetries: 6,
+        maxAttempts: 4,
+        baseDelayMs: 900,
+        maxDelayMs: 9000,
+        jitterRatio: 0.25,
+        shouldRetry: isRetryableSarvamTranslateError,
+        onRetry: async (info) => {
+          await opts.onRetry?.({
+            nextAttempt: info.attempt + 1,
+            maxAttempts: info.maxAttempts,
+          })
+        },
       }
-    )
+    ).catch((error) => {
+      throw new Error(buildSarvamTranslateErrorMessage(error))
+    })
 
     const t = (r.translated_text || "").trim()
     if (t) translatedParts.push(t)
@@ -556,6 +588,17 @@ export async function POST(request: Request) {
       const translated = await translateChunk({
         text: src.text,
         targetLanguage: job.targetLanguage,
+        onRetry: async (retry) => {
+          await setTranslatorJobStatus(userId, jobId, {
+            ...job,
+            state: "running",
+            stage: "translating",
+            updatedAt: Date.now(),
+            message: `Sarvam translation busy for chunk ${index + 1}/${job.totalChunks} - retrying (${retry.nextAttempt}/${retry.maxAttempts})...`,
+            messageId,
+            retryCount: retryCount || undefined,
+          })
+        },
       })
 
       await setTranslatorJobOutputChunk(userId, jobId, {

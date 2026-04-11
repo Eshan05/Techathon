@@ -25,6 +25,10 @@ import {
   getHttpStatusFromUnknown,
   retryWithExponentialBackoff,
 } from "@/lib/ai/retry"
+import {
+  buildSarvamTranslateErrorMessage,
+  isRetryableSarvamTranslateError,
+} from "@/lib/ai/sarvam-errors"
 
 import { getChatModel, resolveChatProfile } from "@/lib/ai"
 import { generateText } from "ai"
@@ -100,6 +104,10 @@ function splitIntoChunks(text: string, maxChars: number): string[] {
 async function translateChunk(opts: {
   text: string
   targetLanguage: string
+  onRetry?: (info: {
+    nextAttempt: number
+    maxAttempts: number
+  }) => void | Promise<void>
 }): Promise<string> {
   if (!process.env.SARVAM_API_KEY?.trim()) {
     throw new Error("Missing SARVAM_API_KEY")
@@ -122,17 +130,35 @@ async function translateChunk(opts: {
 
   const translatedParts: string[] = []
   for (const part of parts.length ? parts : [opts.text]) {
-    const r = await sarvam.text.translate(
+    const r = await retryWithExponentialBackoff(
+      async () =>
+        await sarvam.text.translate(
+          {
+            input: part,
+            source_language_code: "auto",
+            target_language_code: opts.targetLanguage as any,
+          },
+          {
+            timeoutInSeconds: 60,
+            maxRetries: 2,
+          }
+        ),
       {
-        input: part,
-        source_language_code: "auto",
-        target_language_code: opts.targetLanguage as any,
-      },
-      {
-        timeoutInSeconds: 60,
-        maxRetries: 6,
+        maxAttempts: 4,
+        baseDelayMs: 900,
+        maxDelayMs: 9000,
+        jitterRatio: 0.25,
+        shouldRetry: isRetryableSarvamTranslateError,
+        onRetry: async (info) => {
+          await opts.onRetry?.({
+            nextAttempt: info.attempt + 1,
+            maxAttempts: info.maxAttempts,
+          })
+        },
       }
-    )
+    ).catch((error) => {
+      throw new Error(buildSarvamTranslateErrorMessage(error))
+    })
 
     const t = (r.translated_text || "").trim()
     if (t) translatedParts.push(t)
@@ -172,7 +198,13 @@ async function extractTextWithSarvamOcr(opts: {
       jitterRatio: 0.25,
       shouldRetry: (e) => {
         const status = getHttpStatusFromUnknown(e)
-        return status === 429 || status === 503
+        return (
+          status === 429 ||
+          status === 500 ||
+          status === 502 ||
+          status === 503 ||
+          status === 504
+        )
       },
       onRetry: async (info) => {
         await opts.onStatus?.(
@@ -433,6 +465,18 @@ async function processTranslatorJobLocally(opts: {
     const translated = await translateChunk({
       text: task.text,
       targetLanguage: opts.targetLanguage,
+      onRetry: async (retry) => {
+        await setTranslatorJobStatus(opts.userId, opts.jobId, {
+          ...opts.baseStatus,
+          state: "running",
+          stage: "translating",
+          updatedAt: Date.now(),
+          totalChunks: meaningfulTasks.length,
+          translatedChunks: index,
+          analyzedChunks: index,
+          message: `Sarvam translation busy for page ${task.pageNumber}/${pageCount} (${task.partNumber}/${task.partCount}) - retrying (${retry.nextAttempt}/${retry.maxAttempts})...`,
+        })
+      },
     })
 
     await setTranslatorJobOutputChunk(opts.userId, opts.jobId, {
